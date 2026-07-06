@@ -346,6 +346,7 @@ class _StudentTable extends StatelessWidget {
             DataColumn(label: Text('JK')),
             DataColumn(label: Text('Tanggal Lahir')),
             DataColumn(label: Text('Orang Tua')),
+            DataColumn(label: Text('No WA Ortu')),
             DataColumn(label: Text('Status')),
           ],
           rows: List.generate(students.length, (index) {
@@ -375,6 +376,7 @@ class _StudentTable extends StatelessWidget {
                     ),
                   ),
                 ),
+                DataCell(Text(student.parentPhone)),
                 DataCell(_StatusBadge(isActive: student.isActive)),
               ],
             );

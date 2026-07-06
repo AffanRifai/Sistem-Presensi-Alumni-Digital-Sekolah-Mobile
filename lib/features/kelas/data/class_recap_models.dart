@@ -45,6 +45,7 @@ class StudentRecapModel {
   final String birthDate;
   final bool isActive;
   final String parentName;
+  final String parentPhone;
 
   const StudentRecapModel({
     required this.id,
@@ -55,6 +56,7 @@ class StudentRecapModel {
     required this.birthDate,
     required this.isActive,
     required this.parentName,
+    required this.parentPhone,
   });
 
   factory StudentRecapModel.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,9 @@ class StudentRecapModel {
     final parentName = parent is Map<String, dynamic>
         ? parent['name']?.toString()
         : json['parent_name']?.toString();
+    final parentPhone = parent is Map<String, dynamic>
+        ? parent['phone']?.toString()
+        : json['parent_phone']?.toString();
     final gender = json['gender']?.toString();
 
     return StudentRecapModel(
@@ -73,6 +78,7 @@ class StudentRecapModel {
       birthDate: json['birth_date']?.toString() ?? '-',
       isActive: json['status'] == 'active',
       parentName: parentName?.isNotEmpty == true ? parentName! : '-',
+      parentPhone: parentPhone?.isNotEmpty == true ? parentPhone! : '-',
     );
   }
 }

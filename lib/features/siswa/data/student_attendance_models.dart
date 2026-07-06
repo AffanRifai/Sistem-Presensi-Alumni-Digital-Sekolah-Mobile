@@ -41,6 +41,35 @@ class StudentAttendanceProfile {
       birthDate: studentMap['birth_date']?.toString() ?? '-',
     );
   }
+
+  factory StudentAttendanceProfile.fromProfileJson(Map<String, dynamic> json) {
+    final classData = json['class'];
+    final classMap = classData is Map<String, dynamic>
+        ? classData
+        : <String, dynamic>{};
+    final gender = json['gender']?.toString();
+    final className = classMap['name']?.toString();
+    final grade = classMap['grade']?.toString();
+    final major = classMap['major']?.toString();
+    final gradeLabel = className?.isNotEmpty == true
+        ? className!
+        : [grade, major]
+              .where((value) => value != null && value.isNotEmpty)
+              .join(' ');
+
+    return StudentAttendanceProfile(
+      name: json['name']?.toString() ?? '-',
+      grade: gradeLabel.isEmpty ? '-' : gradeLabel,
+      nis: json['nis']?.toString() ?? '-',
+      nisn: json['nisn']?.toString() ?? '-',
+      gender: gender == 'male'
+          ? 'Laki-laki'
+          : gender == 'female'
+          ? 'Perempuan'
+          : '-',
+      birthDate: json['birth_date']?.toString() ?? '-',
+    );
+  }
 }
 
 class StudentAttendanceRecord {

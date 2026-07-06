@@ -11,7 +11,7 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      return 'http://localhost:8000/api';
+      return 'http://localhost:8000/api/v1';
     }
 
     return 'http://192.168.100.12:8000/api/v1';

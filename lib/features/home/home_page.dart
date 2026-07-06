@@ -4,7 +4,7 @@ import '../auth/login_page.dart';
 import '../kelas/kelas_guru_page.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../presensi/pilih_kelas_page.dart';
-import '../siswa/data/riwayat_kehadiran_page.dart';
+import '../siswa/riwayat_kehadiran_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/alumni_event_page.dart';

@@ -11,7 +11,10 @@ class StudentAttendanceService {
   final ApiClient _apiClient;
   final AuthService _authService;
 
-  Future<StudentAttendanceSummary> fetchCurrentStudentAttendance() async {
+  Future<StudentAttendanceSummary> fetchCurrentStudentAttendance({
+    required int month,
+    required int year,
+  }) async {
     final user = await _authService.readUser();
     if (user?.role != 'student') {
       throw const ApiException(
@@ -19,8 +22,28 @@ class StudentAttendanceService {
       );
     }
 
-    final response = await _apiClient.get('/attendances');
+    final response = await _apiClient.get(
+      '/attendances',
+      queryParameters: {'month': month.toString(), 'year': year.toString()},
+    );
     final data = response['data'];
+
+    if (data is Map<String, dynamic>) {
+      final profile = data['profile'];
+      final records = data['records'];
+
+      return StudentAttendanceSummary(
+        profile: profile is Map<String, dynamic>
+            ? StudentAttendanceProfile.fromProfileJson(profile)
+            : null,
+        records: records is List
+            ? records
+                  .whereType<Map<String, dynamic>>()
+                  .map(StudentAttendanceRecord.fromJson)
+                  .toList()
+            : const [],
+      );
+    }
 
     if (data is! List || data.isEmpty) {
       return const StudentAttendanceSummary(profile: null, records: []);

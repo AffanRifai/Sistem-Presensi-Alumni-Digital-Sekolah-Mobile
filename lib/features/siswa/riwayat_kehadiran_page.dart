@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/network/api_exception.dart';
-import 'student_attendance_models.dart';
-import 'student_attendance_service.dart';
+import '../../core/network/api_exception.dart';
+import 'data/student_attendance_models.dart';
+import 'data/student_attendance_service.dart';
 
 class AttendanceHistoryPage extends StatefulWidget {
   const AttendanceHistoryPage({super.key});
@@ -19,6 +19,7 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
       StudentAttendanceService();
 
   StudentAttendanceSummary? _summary;
+  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -36,7 +37,10 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
 
     try {
       final summary = await _studentAttendanceService
-          .fetchCurrentStudentAttendance();
+          .fetchCurrentStudentAttendance(
+            month: _selectedMonth.month,
+            year: _selectedMonth.year,
+          );
       if (!mounted) return;
       setState(() {
         _summary = summary;
@@ -101,6 +105,46 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
     return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
+  String _formatMonth(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2050),
+      helpText: 'Pilih bulan riwayat',
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(primary: primaryBlue),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked == null) return;
+    setState(() => _selectedMonth = DateTime(picked.year, picked.month));
+    await _loadHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -140,6 +184,8 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
                 summary: _summary,
                 statusColor: _statusColor,
                 formatDate: _formatDate,
+                selectedMonthLabel: _formatMonth(_selectedMonth),
+                onPickMonth: _isLoading ? null : _pickMonth,
                 onRetry: _loadHistory,
               ),
             ),
@@ -156,6 +202,8 @@ class _HistoryContent extends StatelessWidget {
   final StudentAttendanceSummary? summary;
   final Color Function(String status) statusColor;
   final String Function(DateTime date) formatDate;
+  final String selectedMonthLabel;
+  final VoidCallback? onPickMonth;
   final VoidCallback onRetry;
 
   const _HistoryContent({
@@ -164,6 +212,8 @@ class _HistoryContent extends StatelessWidget {
     required this.summary,
     required this.statusColor,
     required this.formatDate,
+    required this.selectedMonthLabel,
+    required this.onPickMonth,
     required this.onRetry,
   });
 
@@ -195,7 +245,12 @@ class _HistoryContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _ProfileCard(profile: data.profile!),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+          _MonthFilterCard(
+            selectedMonthLabel: selectedMonthLabel,
+            onTap: onPickMonth,
+          ),
+          const SizedBox(height: 16),
           _LogCard(
             records: data.records,
             statusColor: statusColor,
@@ -310,6 +365,62 @@ class _ProfileCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _MonthFilterCard extends StatelessWidget {
+  final String selectedMonthLabel;
+  final VoidCallback? onTap;
+
+  const _MonthFilterCard({
+    required this.selectedMonthLabel,
+    required this.onTap,
+  });
+
+  static const Color primaryBlue = Color(0xFF3E87D8);
+
+  @override
+  Widget build(BuildContext context) {
+    return _WhiteCard(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_month_outlined, color: primaryBlue),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filter Bulan',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      selectedMonthLabel,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down, color: primaryBlue),
+            ],
+          ),
+        ),
       ),
     );
   }
