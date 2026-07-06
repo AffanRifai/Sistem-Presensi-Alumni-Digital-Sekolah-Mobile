@@ -1,0 +1,37 @@
+import '../../../core/network/api_exception.dart';
+import '../../../core/network/api_client.dart';
+import '../../auth/data/auth_service.dart';
+import 'student_attendance_models.dart';
+
+class StudentAttendanceService {
+  StudentAttendanceService({ApiClient? apiClient, AuthService? authService})
+    : _apiClient = apiClient ?? ApiClient(),
+      _authService = authService ?? AuthService();
+
+  final ApiClient _apiClient;
+  final AuthService _authService;
+
+  Future<StudentAttendanceSummary> fetchCurrentStudentAttendance() async {
+    final user = await _authService.readUser();
+    if (user?.role != 'student') {
+      throw const ApiException(
+        'Riwayat kehadiran hanya tersedia untuk akun siswa.',
+      );
+    }
+
+    final response = await _apiClient.get('/attendances');
+    final data = response['data'];
+
+    if (data is! List || data.isEmpty) {
+      return const StudentAttendanceSummary(profile: null, records: []);
+    }
+
+    final rows = data.whereType<Map<String, dynamic>>().toList();
+    final records = rows.map(StudentAttendanceRecord.fromJson).toList();
+
+    return StudentAttendanceSummary(
+      profile: StudentAttendanceProfile.fromAttendanceJson(rows.first),
+      records: records,
+    );
+  }
+}

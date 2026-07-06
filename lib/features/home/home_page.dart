@@ -4,8 +4,7 @@ import '../auth/login_page.dart';
 import '../kelas/kelas_guru_page.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../presensi/pilih_kelas_page.dart';
-import '../presensi/riwayat_kehadiran_page.dart';
-import '../siswa/kehadiran_siswa_page.dart';
+import '../siswa/data/riwayat_kehadiran_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -31,9 +30,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// HEADER: gradient biru, profil (avatar + nama + role), jam & sapaan
-// ==========================================================
+// header
 class _HeaderSection extends StatelessWidget {
   const _HeaderSection();
 
@@ -60,15 +57,13 @@ class _HeaderSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Profile row: avatar + username + role
+          // Profile
           Row(
             children: [
               const CircleAvatar(
                 radius: 26,
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, size: 30, color: Color(0xFF4A90D9)),
-                // Ganti dengan:
-                // backgroundImage: NetworkImage('URL_FOTO_PROFIL'),
               ),
               const SizedBox(width: 12),
               FutureBuilder<AuthUser?>(
@@ -227,9 +222,6 @@ class _HeaderSection extends StatelessWidget {
   }
 }
 
-// ==========================================================
-// MENU: grid ikon berwarna + label, seperti referensi MyAcademic
-// ==========================================================
 class _MenuItemData {
   final IconData icon;
   final String label;
@@ -253,12 +245,6 @@ class _MenuSection extends StatelessWidget {
       label: 'Presensi Siswa',
       bgColor: Color(0xFFD9F2E4),
       iconColor: Color(0xFF2E9E5B),
-    ),
-    _MenuItemData(
-      icon: Icons.groups_outlined,
-      label: 'Kehadiran Siswa',
-      bgColor: Color(0xFFFCEBD3),
-      iconColor: Color(0xFFE0983C),
     ),
     _MenuItemData(
       icon: Icons.class_outlined,
@@ -288,47 +274,69 @@ class _MenuSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Menu',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
+    return FutureBuilder<AuthUser?>(
+      future: AuthService().readUser(),
+      builder: (context, snapshot) {
+        final role = snapshot.data?.role;
+        final items = _items
+            .where((item) => _isMenuVisibleForRole(item.label, role))
+            .toList();
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Menu',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Gunakan menu ini untuk mengelola data presensi dan akademik.',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: items.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 0.78,
+                ),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  return _MenuTile(
+                    item: item,
+                    onTap: () => _handleMenuTap(context, item),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'Gunakan menu ini untuk mengelola data presensi dan akademik.',
-            style: TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-          const SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _items.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.78,
-            ),
-            itemBuilder: (context, index) {
-              final item = _items[index];
-              return _MenuTile(
-                item: item,
-                onTap: () => _handleMenuTap(context, item),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  bool _isMenuVisibleForRole(String label, String? role) {
+    if (role == 'student') {
+      return label == 'Riwayat Kehadiran';
+    }
+
+    if (role == 'teacher') {
+      return label != 'Riwayat Kehadiran';
+    }
+
+    return true;
   }
 
   void _handleMenuTap(BuildContext context, _MenuItemData item) {
@@ -336,7 +344,6 @@ class _MenuSection extends StatelessWidget {
       'Kelas yang Diampu' => const TeacherClassesPage(),
       'Rekap Kelas' => const ClassRecapListPage(),
       'Riwayat Kehadiran' => const AttendanceHistoryPage(),
-      'Kehadiran Siswa' => const ChildAttendanceStatusPage(),
       'Rekap Kehadiran' => const AttendanceRecapSelectClassPage(),
       _ => const SelectClassDatePage(),
     };
