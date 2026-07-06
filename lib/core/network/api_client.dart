@@ -40,6 +40,21 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
+    final response = await _client
+        .put(
+          _buildUri(path),
+          headers: await _headers(),
+          body: jsonEncode(body ?? {}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    return _handleResponse(response);
+  }
+
   Future<Map<String, dynamic>> postMultipart(
     String path, {
     Map<String, String>? fields,

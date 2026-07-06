@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '/features/home/home_page.dart';
+import 'alumni_register_page.dart';
 
 import 'data/auth_service.dart';
 
@@ -210,6 +211,25 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.white,
                           ),
                         ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Link to Registration
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AlumniRegisterPage()),
+                  );
+                },
+                child: const Text(
+                  'Belum punya akun? Daftar sebagai Alumni',
+                  style: TextStyle(
+                    color: Color(0xFF3E87D8),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

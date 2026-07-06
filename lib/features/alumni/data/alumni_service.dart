@@ -49,6 +49,7 @@ class AlumniProfile {
     String? getUserField(String key) {
       return json[key]?.toString() ??
              json['alumni']?[key]?.toString() ??
+             json['alumni']?['user']?[key]?.toString() ??
              json['user']?[key]?.toString();
     }
 
@@ -57,7 +58,7 @@ class AlumniProfile {
       email: getUserField('email') ?? '-',
       nisn: getField('nisn')?.toString(),
       phone: getUserField('phone') ?? getField('whatsapp')?.toString(),
-      schoolName: json['alumni']?['school']?['name']?.toString() ?? getField('school_name')?.toString(),
+      schoolName: json['alumni']?['school']?['name']?.toString() ?? getField('school_name')?.toString() ?? getField('schoolName')?.toString(),
       graduationYear: getField('graduation_year')?.toString(),
       status: getUserField('verification_status') ?? getUserField('status') ?? 'active',
       role: getUserField('role') ?? 'alumni',
@@ -85,5 +86,12 @@ class AlumniService {
     final response = await _apiClient.get('/alumni/profile'); // Changed to /alumni/profile
     final data = response['data'] ?? response; // Handle varying API responses
     return AlumniProfile.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<AlumniProfile> updateProfile(Map<String, dynamic> data) async {
+    final response = await _apiClient.put('/alumni/profile', body: data);
+    // Asumsikan backend mengembalikan data alumni di response['data']['alumni']
+    final responseData = response['data']?['alumni'] ?? response['data'] ?? response;
+    return AlumniProfile.fromJson(responseData as Map<String, dynamic>);
   }
 }

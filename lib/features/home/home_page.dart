@@ -354,7 +354,7 @@ class _MenuSection extends StatelessWidget {
     }
 
     if (role == 'teacher') {
-      return label != 'Riwayat Kehadiran' && label != 'Profil Alumni' && label != 'Event Alumni';
+      return label != 'Riwayat Kehadiran' && label != 'Profil Alumni' && label != 'Event Alumni' && label != 'Lowongan Kerja';
     }
 
     if (role == 'alumni') {

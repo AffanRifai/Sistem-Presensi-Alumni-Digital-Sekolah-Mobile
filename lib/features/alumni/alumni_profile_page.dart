@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'data/alumni_service.dart';
+import 'alumni_profile_edit_page.dart';
 
 class AlumniProfilePage extends StatefulWidget {
   const AlumniProfilePage({super.key});
@@ -11,6 +12,7 @@ class AlumniProfilePage extends StatefulWidget {
 class _AlumniProfilePageState extends State<AlumniProfilePage> {
   final _service = AlumniService();
   late Future<AlumniProfile> _profileFuture;
+  AlumniProfile? snapshotData;
 
   @override
   void initState() {
@@ -30,6 +32,26 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () async {
+              if (snapshotData == null) return;
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AlumniProfileEditPage(currentProfile: snapshotData!),
+                ),
+              );
+              
+              if (result == true && mounted) {
+                setState(() {
+                  _profileFuture = _service.fetchProfile();
+                });
+              }
+            },
+          ),
+        ],
       ),
       body: FutureBuilder<AlumniProfile>(
         future: _profileFuture,
@@ -50,6 +72,7 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
           }
 
           final profile = snapshot.data!;
+          snapshotData = profile;
           return _ProfileContent(profile: profile);
         },
       ),
