@@ -89,7 +89,7 @@ class ApiClient {
 
   Map<String, dynamic> _handleResponse(http.Response response) {
     final decoded = _decode(response.body);
-    final success = decoded['success'] == true;
+    final success = decoded['success'] == true || decoded['status'] == 'success';
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(_readErrorMessage(decoded));

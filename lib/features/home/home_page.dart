@@ -8,6 +8,7 @@ import '../siswa/data/riwayat_kehadiran_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/alumni_event_page.dart';
+import '../alumni/job_vacancy_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -284,6 +285,12 @@ class _MenuSection extends StatelessWidget {
       bgColor: Color(0xFFFCEBD3),
       iconColor: Color(0xFFE0983C),
     ),
+    _MenuItemData(
+      icon: Icons.work_outline,
+      label: 'Lowongan Kerja',
+      bgColor: Color(0xFFE8F5E9),
+      iconColor: Color(0xFF4CAF50),
+    ),
   ];
 
   @override
@@ -351,7 +358,7 @@ class _MenuSection extends StatelessWidget {
     }
 
     if (role == 'alumni') {
-      return label == 'Profil Alumni' || label == 'Event Alumni';
+      return label == 'Profil Alumni' || label == 'Event Alumni' || label == 'Lowongan Kerja';
     }
 
     return true;
@@ -365,6 +372,7 @@ class _MenuSection extends StatelessWidget {
       'Rekap Kehadiran' => const AttendanceRecapSelectClassPage(),
       'Profil Alumni' => const AlumniProfilePage(),
       'Event Alumni' => const AlumniEventPage(),
+      'Lowongan Kerja' => const JobVacancyPage(),
       _ => const SelectClassDatePage(),
     };
 
