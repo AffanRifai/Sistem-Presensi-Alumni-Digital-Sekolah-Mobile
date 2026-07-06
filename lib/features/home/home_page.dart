@@ -6,6 +6,8 @@ import '../kelas/list_rekap_kelas_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../siswa/data/riwayat_kehadiran_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
+import '../alumni/alumni_profile_page.dart';
+import '../alumni/alumni_event_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -270,6 +272,18 @@ class _MenuSection extends StatelessWidget {
       bgColor: Color(0xFFD9F2E4),
       iconColor: Color(0xFF2E9E5B),
     ),
+    _MenuItemData(
+      icon: Icons.person_outline,
+      label: 'Profil Alumni',
+      bgColor: Color(0xFFE3EEFF),
+      iconColor: Color(0xFF4A90D9),
+    ),
+    _MenuItemData(
+      icon: Icons.event_note_outlined,
+      label: 'Event Alumni',
+      bgColor: Color(0xFFFCEBD3),
+      iconColor: Color(0xFFE0983C),
+    ),
   ];
 
   @override
@@ -333,7 +347,11 @@ class _MenuSection extends StatelessWidget {
     }
 
     if (role == 'teacher') {
-      return label != 'Riwayat Kehadiran';
+      return label != 'Riwayat Kehadiran' && label != 'Profil Alumni' && label != 'Event Alumni';
+    }
+
+    if (role == 'alumni') {
+      return label == 'Profil Alumni' || label == 'Event Alumni';
     }
 
     return true;
@@ -345,6 +363,8 @@ class _MenuSection extends StatelessWidget {
       'Rekap Kelas' => const ClassRecapListPage(),
       'Riwayat Kehadiran' => const AttendanceHistoryPage(),
       'Rekap Kehadiran' => const AttendanceRecapSelectClassPage(),
+      'Profil Alumni' => const AlumniProfilePage(),
+      'Event Alumni' => const AlumniEventPage(),
       _ => const SelectClassDatePage(),
     };
 

@@ -40,6 +40,34 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  Future<Map<String, dynamic>> postMultipart(
+    String path, {
+    Map<String, String>? fields,
+    http.MultipartFile? file,
+  }) async {
+    final uri = _buildUri(path);
+    final request = http.MultipartRequest('POST', uri);
+    
+    // Add headers
+    final currentHeaders = await _headers();
+    // MultipartRequest automatically sets the content-type boundary
+    currentHeaders.remove('Content-Type'); 
+    request.headers.addAll(currentHeaders);
+
+    if (fields != null) {
+      request.fields.addAll(fields);
+    }
+    
+    if (file != null) {
+      request.files.add(file);
+    }
+
+    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+
+    return _handleResponse(response);
+  }
+
   Uri _buildUri(String path, [Map<String, String>? queryParameters]) {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     if (queryParameters == null || queryParameters.isEmpty) {

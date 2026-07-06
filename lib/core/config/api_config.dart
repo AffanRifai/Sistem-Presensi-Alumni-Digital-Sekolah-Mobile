@@ -14,6 +14,6 @@ class ApiConfig {
       return 'http://localhost:8000/api';
     }
 
-    return 'http://192.168.100.13:8000/api/v1';
+    return 'http://192.168.100.12:8000/api/v1';
   }
 }
