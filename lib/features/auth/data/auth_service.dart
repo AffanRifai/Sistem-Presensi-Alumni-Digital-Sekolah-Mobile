@@ -96,7 +96,7 @@ class AuthService {
   }) async {
     final response = await _client
         .post(
-          Uri.parse('${ApiConfig.baseUrl}/auth/login'),
+          Uri.parse('${ApiConfig.baseUrl}/login'),
           headers: const {
             'Accept': 'application/json',
             'Content-Type': 'application/json',

@@ -12,7 +12,7 @@ class AttendanceRecapService {
     required DateTime date,
   }) async {
     final response = await _apiClient.get(
-      '/attendances/report/daily',
+      '/attendance/daily',
       queryParameters: {
         'class_id': classId.toString(),
         'date': _formatDate(date),
@@ -41,7 +41,7 @@ class AttendanceRecapService {
     required int year,
   }) async {
     final response = await _apiClient.get(
-      '/attendances/report/monthly',
+      '/attendance/monthly',
       queryParameters: {
         'class_id': classId.toString(),
         'month': month.toString(),
