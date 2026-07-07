@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'alumni_event_detail_page.dart';
 import 'alumni_event_form_page.dart';
 import 'data/alumni_event_service.dart';
+import '../auth/data/auth_service.dart';
 
 class AlumniEventPage extends StatefulWidget {
   const AlumniEventPage({super.key});
@@ -13,10 +15,24 @@ class AlumniEventPage extends StatefulWidget {
 class _AlumniEventPageState extends State<AlumniEventPage> {
   final _service = AlumniEventService();
   late Future<List<AlumniEvent>> _eventsFuture;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
+    _loadUserAndEvents();
+  }
+
+  Future<void> _loadUserAndEvents() async {
+    try {
+      final user = await AuthService().readUser();
+      if (mounted) {
+        setState(() => _currentUserId = user?.id);
+      }
+    } catch (e) {
+      debugPrint('Gagal memuat user: $e');
+    }
+
     _loadEvents();
   }
 
@@ -45,7 +61,7 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
             MaterialPageRoute(builder: (_) => const AlumniEventFormPage()),
           );
           if (result == true) {
-            _loadEvents(); // Refresh after submitting event
+            _loadEvents();
           }
         },
         child: const Icon(Icons.add),
@@ -62,9 +78,7 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
           if (snapshot.hasError) {
             return _ErrorView(
               message: snapshot.error.toString(),
-              onRetry: () => setState(() {
-                _eventsFuture = _service.fetchEvents();
-              }),
+              onRetry: _loadEvents,
             );
           }
 
@@ -76,17 +90,18 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
           return RefreshIndicator(
             color: const Color(0xFF4A90D9),
             onRefresh: () async {
-              setState(() {
-                _eventsFuture = _service.fetchEvents();
-              });
+              _loadEvents();
               await _eventsFuture;
             },
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: events.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
-              itemBuilder: (context, index) =>
-                  _EventCard(event: events[index]),
+              itemBuilder: (context, index) => _EventCard(
+                event: events[index],
+                currentUserId: _currentUserId,
+                onRefresh: _loadEvents,
+              ),
             ),
           );
         },
@@ -134,8 +149,7 @@ class _ErrorView extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4A90D9),
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -186,28 +200,94 @@ class _EmptyView extends StatelessWidget {
 // ─── Event Card ───────────────────────────────────────────────────────────────
 class _EventCard extends StatelessWidget {
   final AlumniEvent event;
+  final int? currentUserId;
+  final VoidCallback onRefresh;
 
-  const _EventCard({required this.event});
+  const _EventCard({
+    required this.event,
+    this.currentUserId,
+    required this.onRefresh,
+  });
+
+  Future<void> _handleDelete(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Event'),
+        content: const Text('Apakah Anda yakin ingin menghapus event ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        await AlumniEventService().deleteEvent(event.id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Event berhasil dihapus')),
+          );
+          onRefresh();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghapus event: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _handleEdit(BuildContext context) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AlumniEventFormPage(eventToEdit: event),
+      ),
+    );
+    if (result == true) {
+      onRefresh();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final statusInfo = _getStatusInfo(event.status);
+    final canEditOrDelete = event.postedById == currentUserId && event.approvalStatus == 'pending';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AlumniEventDetailPage(event: event),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // ── Header berwarna sesuai status ──
           Container(
             width: double.infinity,
@@ -250,6 +330,44 @@ class _EventCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Tombol Opsi (Edit / Delete)
+                if (canEditOrDelete) ...[
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      icon: Icon(Icons.more_vert, size: 20, color: statusInfo.color),
+                      onSelected: (value) {
+                        if (value == 'edit') _handleEdit(context);
+                        if (value == 'delete') _handleDelete(context);
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Hapus'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -335,6 +453,7 @@ class _EventCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -343,8 +462,7 @@ class _EventCard extends StatelessWidget {
       'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
       'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
     ];
-    final startStr =
-        '${start.day} ${months[start.month - 1]} ${start.year}';
+    final startStr = '${start.day} ${months[start.month - 1]} ${start.year}';
     if (end == null || end == start) return startStr;
     final endStr = '${end.day} ${months[end.month - 1]} ${end.year}';
     return '$startStr – $endStr';

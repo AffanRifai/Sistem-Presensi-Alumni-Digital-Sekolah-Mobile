@@ -22,6 +22,7 @@ class AuthUser {
   final String role;
   final String status;
   final int? schoolId;
+  final String? verificationStatus;
 
   const AuthUser({
     required this.id,
@@ -31,6 +32,7 @@ class AuthUser {
     required this.role,
     required this.status,
     required this.schoolId,
+    this.verificationStatus,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
@@ -42,6 +44,7 @@ class AuthUser {
       role: json['role'] as String,
       status: json['status'] as String,
       schoolId: json['school_id'] as int?,
+      verificationStatus: json['verification_status'] as String?,
     );
   }
 
@@ -54,6 +57,7 @@ class AuthUser {
       'role': role,
       'status': status,
       'school_id': schoolId,
+      'verification_status': verificationStatus,
     };
   }
 }

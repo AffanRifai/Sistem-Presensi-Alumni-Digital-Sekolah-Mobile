@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '/features/home/home_page.dart';
 import 'alumni_register_page.dart';
+import 'pending_verification_page.dart';
 
 import 'data/auth_service.dart';
 
@@ -38,13 +39,24 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
-      await _authService.login(email: email, password: password);
+      final result = await _authService.login(email: email, password: password);
 
       if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      
+      if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
+        );
+      } else if (result.user.role == 'alumni' && result.user.verificationStatus == 'rejected') {
+        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+        await _authService.logout();
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
@@ -75,11 +87,12 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
               const SizedBox(height: 140),
               const Text(
                 ' Login',
@@ -234,6 +247,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

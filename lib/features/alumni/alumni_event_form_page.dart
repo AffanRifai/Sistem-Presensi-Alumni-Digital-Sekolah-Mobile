@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'data/alumni_event_service.dart';
+// Asumsi model AlumniEvent berada di file terpisah atau di dalam service
+// Pastikan import ini sesuai dengan struktur folder kamu
+import 'data/alumni_event_service.dart' show AlumniEvent; 
 
 class AlumniEventFormPage extends StatefulWidget {
-  const AlumniEventFormPage({super.key});
+  final AlumniEvent? eventToEdit;
+
+  const AlumniEventFormPage({super.key, this.eventToEdit});
 
   @override
   State<AlumniEventFormPage> createState() => _AlumniEventFormPageState();
@@ -23,6 +28,22 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
   bool _isLoading = false;
 
   final _service = AlumniEventService();
+
+  bool get _isEditMode => widget.eventToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill form jika dalam mode edit
+    if (_isEditMode) {
+      final event = widget.eventToEdit!;
+      _titleController.text = event.title;
+      _descriptionController.text = event.description;
+      _locationController.text = event.location;
+      _selectedDate = event.startDate;
+      _selectedTime = TimeOfDay.fromDateTime(event.startDate);
+    }
+  }
 
   @override
   void dispose() {
@@ -46,7 +67,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,
-      initialDate: now,
+      initialDate: _selectedDate ?? now,
       firstDate: now,
       lastDate: DateTime(now.year + 5),
     );
@@ -60,7 +81,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
   Future<void> _pickTime() async {
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime ?? TimeOfDay.now(),
     );
     if (time != null) {
       setState(() {
@@ -89,17 +110,34 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
         _selectedTime!.minute,
       );
 
-      await _service.createEvent(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        location: _locationController.text.trim(),
-        eventDate: eventDate,
-        bannerImagePath: _selectedImage?.path,
-      );
+      if (_isEditMode) {
+        await _service.updateEvent(
+          id: widget.eventToEdit!.id,
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          location: _locationController.text.trim(),
+          eventDate: eventDate,
+          bannerImagePath: _selectedImage?.path,
+        );
+      } else {
+        await _service.createEvent(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          location: _locationController.text.trim(),
+          eventDate: eventDate,
+          bannerImagePath: _selectedImage?.path,
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Event berhasil diajukan dan menunggu persetujuan admin.')),
+          SnackBar(
+            content: Text(
+              _isEditMode 
+                  ? 'Event berhasil diperbarui.' 
+                  : 'Event berhasil diajukan dan menunggu persetujuan admin.'
+            ),
+          ),
         );
         Navigator.of(context).pop(true);
       }
@@ -137,7 +175,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Ajukan Event'),
+        title: Text(_isEditMode ? 'Edit Event' : 'Ajukan Event'),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -165,9 +203,19 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                                   image: FileImage(_selectedImage!),
                                   fit: BoxFit.cover,
                                 )
-                              : null,
+                              : (_isEditMode && widget.eventToEdit?.bannerImage != null)
+                                  ? DecorationImage(
+                                      image: NetworkImage(
+                                        widget.eventToEdit!.bannerImage!.startsWith('http')
+                                            ? widget.eventToEdit!.bannerImage!
+                                            : 'http://192.168.100.12:8000/storage/${widget.eventToEdit!.bannerImage}',
+                                      ),
+                                      fit: BoxFit.cover,
+                                    )
+                                  : null,
                         ),
-                        child: _selectedImage == null
+                        child: _selectedImage == null && 
+                               (!_isEditMode || widget.eventToEdit?.bannerImage == null)
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -269,9 +317,9 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Ajukan Event',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      child: Text(
+                        _isEditMode ? 'Simpan Perubahan' : 'Ajukan Event',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(height: 24),

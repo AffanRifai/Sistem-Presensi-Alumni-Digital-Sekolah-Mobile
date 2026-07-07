@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'data/alumni_register_service.dart';
+import 'data/auth_service.dart';
+import 'pending_verification_page.dart';
 import '../../../core/network/api_exception.dart';
 
 class AlumniRegisterPage extends StatefulWidget {
@@ -23,6 +26,10 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
 
   List<Map<String, dynamic>> _schools = [];
   int? _selectedSchoolId;
+  List<String> _availableClasses = [];
+  List<String> _availableMajors = [];
+  String? _selectedClass;
+  String? _selectedMajor;
   int _selectedYear = DateTime.now().year;
   bool _isLoading = false;
   bool _isLoadingSchools = true;
@@ -41,8 +48,6 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
     _phoneController.dispose();
     _passwordController.dispose();
     _nisnController.dispose();
-    _classController.dispose();
-    _majorController.dispose();
     super.dispose();
   }
 
@@ -78,29 +83,46 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
         schoolId: _selectedSchoolId!,
         nisn: _nisnController.text.trim(),
         graduationYear: _selectedYear,
-        className: _classController.text.trim(),
-        major: _majorController.text.trim(),
+        className: _selectedClass ?? '',
+        major: _selectedMajor ?? '',
       );
 
       if (!mounted) return;
       
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('Registrasi Berhasil', style: TextStyle(color: Colors.green)),
-          content: const Text('Akun alumni Anda berhasil didaftarkan. Harap tunggu verifikasi dari Admin sekolah agar bisa login.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Close register page (back to login)
-              },
-              child: const Text('Tutup'),
-            )
-          ],
-        ),
-      );
+      try {
+        final authService = AuthService();
+        await authService.login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+        
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const PendingVerificationPage()),
+          (route) => false,
+        );
+      } catch (_) {
+        // Fallback jika auto-login gagal
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Registrasi Berhasil', style: TextStyle(color: Colors.green)),
+            content: const Text('Akun alumni Anda berhasil didaftarkan. Harap tunggu verifikasi dari Admin sekolah sebelum menggunakan aplikasi.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.of(context).pop(); // Close register page (back to login)
+                },
+                child: const Text('Tutup'),
+              )
+            ],
+          ),
+        );
+      }
 
     } on ApiException catch (e) {
       _showMessage(e.message);
@@ -186,8 +208,19 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                 TextFormField(
                   controller: _phoneController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(15),
+                  ],
                   decoration: inputDecoration.copyWith(labelText: 'Nomor HP (WhatsApp)'),
-                  validator: (v) => v == null || v.isEmpty ? 'Nomor HP tidak boleh kosong' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Nomor HP tidak boleh kosong';
+                    if (v.length < 9) return 'Nomor HP terlalu pendek (minimal 9 angka)';
+                    if (!v.startsWith('0') && !v.startsWith('62')) {
+                      return 'Nomor HP harus diawali dengan 0 atau 62';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 
@@ -213,13 +246,38 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                   const Center(child: CircularProgressIndicator())
                 else
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: _selectedSchoolId,
                     decoration: inputDecoration.copyWith(labelText: 'Pilih Sekolah'),
                     items: _schools.map((school) => DropdownMenuItem<int>(
                       value: school['id'] as int,
-                      child: Text(school['name'].toString()),
+                      child: Text(
+                        school['name'].toString(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     )).toList(),
-                    onChanged: (val) => setState(() => _selectedSchoolId = val),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedSchoolId = val;
+                        final school = _schools.firstWhere((s) => s['id'] == val);
+                        final classes = (school['classes'] as List?) ?? [];
+                        
+                        _availableClasses = classes
+                            .map((c) => c['name']?.toString() ?? '')
+                            .where((s) => s.isNotEmpty)
+                            .toSet()
+                            .toList();
+                            
+                        _availableMajors = classes
+                            .map((c) => c['major']?.toString() ?? '')
+                            .where((s) => s.isNotEmpty)
+                            .toSet()
+                            .toList();
+                            
+                        _selectedClass = null;
+                        _selectedMajor = null;
+                      });
+                    },
                     validator: (v) => v == null ? 'Pilih sekolah' : null,
                   ),
                 const SizedBox(height: 12),
@@ -227,8 +285,16 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                 TextFormField(
                   controller: _nisnController,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   decoration: inputDecoration.copyWith(labelText: 'NISN'),
-                  validator: (v) => v == null || v.isEmpty ? 'NISN tidak boleh kosong' : null,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'NISN tidak boleh kosong';
+                    if (v.length != 10) return 'NISN harus tepat 10 digit';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
                 
@@ -237,10 +303,14 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                     Expanded(
                       flex: 2,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         initialValue: _selectedYear,
                         decoration: inputDecoration.copyWith(labelText: 'Tahun Lulus'),
                         items: List.generate(40, (index) => DateTime.now().year - index)
-                            .map((year) => DropdownMenuItem(value: year, child: Text(year.toString())))
+                            .map((year) => DropdownMenuItem(
+                                  value: year,
+                                  child: Text(year.toString(), overflow: TextOverflow.ellipsis),
+                                ))
                             .toList(),
                         onChanged: (val) => setState(() => _selectedYear = val!),
                       ),
@@ -252,18 +322,30 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextFormField(
-                        controller: _classController,
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: _selectedClass,
                         decoration: inputDecoration.copyWith(labelText: 'Kelas (Misal: XII-1)'),
-                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                        items: _availableClasses.map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(c, overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                        onChanged: (val) => setState(() => _selectedClass = val),
+                        validator: (v) => v == null ? 'Pilih kelas' : null,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextFormField(
-                        controller: _majorController,
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        value: _selectedMajor,
                         decoration: inputDecoration.copyWith(labelText: 'Jurusan (Misal: IPA)'),
-                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                        items: _availableMajors.map((m) => DropdownMenuItem(
+                              value: m,
+                              child: Text(m, overflow: TextOverflow.ellipsis),
+                            )).toList(),
+                        onChanged: (val) => setState(() => _selectedMajor = val),
+                        validator: (v) => v == null ? 'Pilih jurusan' : null,
                       ),
                     ),
                   ],
