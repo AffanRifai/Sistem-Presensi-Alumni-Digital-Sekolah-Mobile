@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'data/job_vacancy_service.dart';
 
 class JobVacancyPage extends StatefulWidget {
@@ -389,6 +390,56 @@ class _JobCard extends StatelessWidget {
                       Text(
                         job.requirements!.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
                         style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.6),
+                      ),
+                      const SizedBox(height: 32),
+                    ],
+                    
+                    if (job.link != null && job.link!.isNotEmpty) ...[
+                      const Text('Tautan Eksternal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () async {
+                          String linkString = job.link!;
+                          if (!linkString.startsWith('http://') && !linkString.startsWith('https://')) {
+                            linkString = 'https://$linkString';
+                          }
+                          final uri = Uri.tryParse(linkString);
+                          if (uri != null) {
+                            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            if (!launched && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tidak dapat membuka tautan')),
+                              );
+                            }
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade100),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.link, color: Colors.blue.shade700),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  job.link!,
+                                  style: TextStyle(
+                                    color: Colors.blue.shade700,
+                                    decoration: TextDecoration.underline,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Icon(Icons.open_in_new, size: 16, color: Colors.blue.shade700),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 32),
                     ],

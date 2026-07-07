@@ -8,6 +8,7 @@ class JobVacancy {
   final String? companyLogo;
   final String description;
   final String? requirements;
+  final String? link;
   final String location;
   final int? salaryMin;
   final int? salaryMax;
@@ -23,6 +24,7 @@ class JobVacancy {
     this.companyLogo,
     required this.description,
     this.requirements,
+    this.link,
     required this.location,
     this.salaryMin,
     this.salaryMax,
@@ -40,6 +42,7 @@ class JobVacancy {
       companyLogo: json['company_logo']?.toString(),
       description: json['description']?.toString() ?? '',
       requirements: json['requirements']?.toString(),
+      link: json['link']?.toString(),
       location: json['location']?.toString() ?? '-',
       salaryMin: (json['salary_min'] as num?)?.toInt(),
       salaryMax: (json['salary_max'] as num?)?.toInt(),

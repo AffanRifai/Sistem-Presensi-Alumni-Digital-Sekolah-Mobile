@@ -83,6 +83,20 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+Future<Map<String, dynamic>> delete(
+    String path, {
+    Map<String, String>? queryParameters,
+  }) async {
+    final response = await _client
+        .delete(
+          _buildUri(path, queryParameters), 
+          headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    return _handleResponse(response);
+  }
+
   Uri _buildUri(String path, [Map<String, String>? queryParameters]) {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     if (queryParameters == null || queryParameters.isEmpty) {

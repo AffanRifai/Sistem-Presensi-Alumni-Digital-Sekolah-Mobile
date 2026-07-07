@@ -330,7 +330,7 @@ class _MenuSection extends StatelessWidget {
                   crossAxisCount: 4,
                   mainAxisSpacing: 20,
                   crossAxisSpacing: 12,
-                  childAspectRatio: 0.78,
+                  childAspectRatio: 0.65,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -404,13 +404,15 @@ class _MenuTile extends StatelessWidget {
             child: Icon(item.icon, color: item.iconColor, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(
-            item.label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
+          Expanded(
+            child: Text(
+              item.label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
           ),
         ],
