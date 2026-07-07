@@ -4,6 +4,7 @@ import '../auth/login_page.dart';
 import '../kelas/kelas_guru_page.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../presensi/pilih_kelas_page.dart';
+import '../presensi/scan_qr_attendance_page.dart';
 import '../siswa/riwayat_kehadiran_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../alumni/alumni_profile_page.dart';
@@ -268,6 +269,12 @@ class _MenuSection extends StatelessWidget {
       iconColor: Color(0xFF2E9E5B),
     ),
     _MenuItemData(
+      icon: Icons.qr_code_scanner_outlined,
+      label: 'Presensi QR',
+      bgColor: Color(0xFFE3EEFF),
+      iconColor: Color(0xFF4A90D9),
+    ),
+    _MenuItemData(
       icon: Icons.analytics_outlined,
       label: 'Rekap Kehadiran',
       bgColor: Color(0xFFD9F2E4),
@@ -350,11 +357,15 @@ class _MenuSection extends StatelessWidget {
 
   bool _isMenuVisibleForRole(String label, String? role) {
     if (role == 'student') {
-      return label == 'Riwayat Kehadiran';
+      return label == 'Riwayat Kehadiran' || label == 'Presensi QR';
     }
 
     if (role == 'teacher') {
-      return label != 'Riwayat Kehadiran' && label != 'Profil Alumni' && label != 'Event Alumni' && label != 'Lowongan Kerja';
+      return label != 'Riwayat Kehadiran' &&
+          label != 'Presensi QR' &&
+          label != 'Profil Alumni' &&
+          label != 'Event Alumni' &&
+          label != 'Lowongan Kerja';
     }
 
     if (role == 'alumni') {
@@ -369,6 +380,7 @@ class _MenuSection extends StatelessWidget {
       'Kelas yang Diampu' => const TeacherClassesPage(),
       'Rekap Kelas' => const ClassRecapListPage(),
       'Riwayat Kehadiran' => const AttendanceHistoryPage(),
+      'Presensi QR' => const ScanQrAttendancePage(),
       'Rekap Kehadiran' => const AttendanceRecapSelectClassPage(),
       'Profil Alumni' => const AlumniProfilePage(),
       'Event Alumni' => const AlumniEventPage(),

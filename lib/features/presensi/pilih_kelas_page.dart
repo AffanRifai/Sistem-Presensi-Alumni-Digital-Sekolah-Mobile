@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/network/api_exception.dart';
 import 'data/presensi_models.dart';
 import 'data/presensi_service.dart';
-import 'presensi_page.dart';
+import 'pilih_metode_presensi_page.dart';
 
 class SelectClassDatePage extends StatefulWidget {
   const SelectClassDatePage({super.key});
@@ -105,7 +105,7 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StudentKehadiranPage(
+        builder: (context) => AttendanceMethodPage(
           classId: _selectedClass!.id,
           className: _selectedClass!.displayName,
           date: _selectedDate,
