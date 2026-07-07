@@ -53,6 +53,7 @@ class AlumniEvent {
       if (value == null) return null;
       if (value is int) return value;
       if (value is String) return int.tryParse(value);
+      if (value is Map && value.containsKey('id')) return parseId(value['id']);
       return null;
     }
 
@@ -67,7 +68,7 @@ class AlumniEvent {
       approvalStatus: json['approval_status']?.toString() ?? 'approved', // default approved
       organizer: parseOrganizer(),
       bannerImage: json['banner_image']?.toString(),
-      postedById: parseId(json['posted_by']), // Menggunakan helper parseId
+      postedById: parseId(json['posted_by']) ?? parseId(json['user_id']) ?? parseId(json['author_id']),
     );
   }
 }
