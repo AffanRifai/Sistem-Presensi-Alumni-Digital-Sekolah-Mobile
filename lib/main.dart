@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/auth/login_page.dart';
+import 'features/auth/welcome_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,9 +14,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'sistem presensi sekolah',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3E87D8)),
       ),
-      home: const LoginPage(),
+      home: const WelcomePage(),
     );
   }
 }
