@@ -57,15 +57,65 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4A90D9),
         onPressed: () async {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AlumniEventFormPage()),
-          );
-          if (result == true) {
-            _loadEvents();
+          // Pastikan user sudah diload
+          if (_currentUserId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tunggu sebentar, sedang memuat data akun...')),
+            );
+            return;
+          }
+
+          try {
+            // Ambil daftar event yang saat ini ada di layar
+            final events = await _eventsFuture;
+            
+            // Hitung berapa banyak event yang diposting oleh user yang sedang login
+            final myEventCount = events.where((e) => e.postedById == _currentUserId).length;
+
+            // Cek apakah sudah mencapai batas maksimal (misal: 5)
+            if (myEventCount >= 5) {
+              if (mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Batas Pengajuan Tercapai'),
+                    content: const Text(
+                      'Kamu sudah mengajukan 5 event. Untuk saat ini, kamu tidak dapat mengajukan event baru lagi.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Mengerti'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return; // Hentikan proses, jangan buka form
+            }
+
+            // Jika belum mencapai batas, buka form pengajuan
+            if (mounted) {
+              final result = await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AlumniEventFormPage()),
+              );
+              
+              if (result == true) {
+                _loadEvents();
+              }
+            }
+          } catch (e) {
+            // Tangani jika _eventsFuture gagal dimuat
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Gagal memverifikasi jumlah event.')),
+              );
+            }
           }
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
       body: FutureBuilder<List<AlumniEvent>>(
         future: _eventsFuture,
@@ -289,171 +339,171 @@ class _EventCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          // ── Header berwarna sesuai status ──
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-            decoration: BoxDecoration(
-              color: statusInfo.bgColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+            // ── Header berwarna sesuai status ──
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              decoration: BoxDecoration(
+                color: statusInfo.bgColor,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.event_outlined, size: 18, color: statusInfo.color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: statusInfo.color,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusInfo.color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      statusInfo.label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: statusInfo.color,
+                      ),
+                    ),
+                  ),
+                  // Tombol Opsi (Edit / Delete)
+                  if (canEditOrDelete) ...[
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(Icons.more_vert, size: 20, color: statusInfo.color),
+                        onSelected: (value) {
+                          if (value == 'edit') _handleEdit(context);
+                          if (value == 'delete') _handleDelete(context);
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Text('Edit'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('Hapus'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.event_outlined, size: 18, color: statusInfo.color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    event.title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: statusInfo.color,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusInfo.color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    statusInfo.label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: statusInfo.color,
-                    ),
-                  ),
-                ),
-                // Tombol Opsi (Edit / Delete)
-                if (canEditOrDelete) ...[
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: PopupMenuButton<String>(
-                      padding: EdgeInsets.zero,
-                      icon: Icon(Icons.more_vert, size: 20, color: statusInfo.color),
-                      onSelected: (value) {
-                        if (value == 'edit') _handleEdit(context);
-                        if (value == 'delete') _handleDelete(context);
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(Icons.edit_outlined, size: 18, color: Colors.blue),
-                              SizedBox(width: 8),
-                              Text('Edit'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Hapus'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
 
-          // ── Body detail ──
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (event.approvalStatus == 'pending') ...[
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.access_time_rounded, size: 14, color: Colors.orange.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Menunggu Persetujuan',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange.shade700,
+            // ── Body detail ──
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (event.approvalStatus == 'pending') ...[
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.access_time_rounded, size: 14, color: Colors.orange.shade700),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Menunggu Persetujuan',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange.shade700,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-                if (event.bannerImage != null && event.bannerImage!.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      event.bannerImage!.startsWith('http')
-                          ? event.bannerImage!
-                          : '${ApiConfig.storageUrl}/${event.bannerImage}',
-                      width: double.infinity,
-                      height: 150,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  ],
+                  if (event.bannerImage != null && event.bannerImage!.isNotEmpty) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        event.bannerImage!.startsWith('http')
+                            ? event.bannerImage!
+                            : '${ApiConfig.storageUrl}/${event.bannerImage}',
+                        width: double.infinity,
+                        height: 150,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (event.description.isNotEmpty) ...[
-                  Text(
-                    event.description.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.black54,
-                      height: 1.5,
+                    const SizedBox(height: 12),
+                  ],
+                  if (event.description.isNotEmpty) ...[
+                    Text(
+                      event.description.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                        height: 1.5,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 12),
+                  ],
+                  _DetailRow(
+                    icon: Icons.calendar_today_outlined,
+                    text: _formatDateRange(event.startDate, event.endDate),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                _DetailRow(
-                  icon: Icons.calendar_today_outlined,
-                  text: _formatDateRange(event.startDate, event.endDate),
-                ),
-                const SizedBox(height: 6),
-                _DetailRow(
-                  icon: Icons.location_on_outlined,
-                  text: event.location,
-                ),
-                if (event.organizer != null && event.organizer!.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   _DetailRow(
-                    icon: Icons.person_outline,
-                    text: event.organizer!,
+                    icon: Icons.location_on_outlined,
+                    text: event.location,
                   ),
+                  if (event.organizer != null && event.organizer!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _DetailRow(
+                      icon: Icons.person_outline,
+                      text: event.organizer!,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
