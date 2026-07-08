@@ -190,14 +190,18 @@ class AuthService {
     }
 
     final result = AuthResult.fromJson(data);
+    await _saveAuthResult(result);
+
+    return result;
+  }
+
+  Future<void> _saveAuthResult(AuthResult result) async {
     await _storage.write(key: _tokenKey, value: result.token);
     await _storage.write(key: _tokenTypeKey, value: result.tokenType);
     await _storage.write(
       key: _userKey,
       value: jsonEncode(result.user.toJson()),
     );
-
-    return result;
   }
 
   Future<String?> readToken() => _storage.read(key: _tokenKey);
