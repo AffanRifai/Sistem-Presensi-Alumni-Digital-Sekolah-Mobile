@@ -85,6 +85,47 @@ if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending')
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await _authService.loginWithGoogle();
+      if (!mounted) return;
+
+      if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
+          (route) => false,
+        );
+      } else if (result.user.role == 'alumni' && result.user.verificationStatus == 'rejected') {
+        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+        await _authService.logout();
+      } else if (result.user.role == 'parent') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ParentHomePage()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      if (error.message != 'Login Google dibatalkan.') {
+        _showMessage(error.message);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Tidak bisa terhubung ke server. Periksa koneksi internet Anda.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color backgroundColor = Color(0xFFCFE7F5);
@@ -237,6 +278,63 @@ if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending')
               ),
 
               const SizedBox(height: 16),
+
+              // Divider "atau"
+              Row(
+                children: [
+                  const Expanded(child: Divider(color: Color(0xFFB0C4D8))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      'atau',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const Expanded(child: Divider(color: Color(0xFFB0C4D8))),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Tombol Login dengan Google
+              SizedBox(
+                height: 54,
+                child: OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleLogin,
+                  icon: Image.network(
+                    'https://developers.google.com/identity/images/g-logo.png',
+                    height: 22,
+                    width: 22,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.g_mobiledata,
+                      size: 26,
+                      color: Color(0xFF4285F4),
+                    ),
+                  ),
+                  label: const Text(
+                    'Masuk dengan Google',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF374151),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
 
               // Link to Registration
               TextButton(

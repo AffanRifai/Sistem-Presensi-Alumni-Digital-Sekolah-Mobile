@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/api_config.dart';
@@ -93,6 +94,69 @@ class AuthService {
 
   final http.Client _client;
   final FlutterSecureStorage _storage;
+
+  // Google Sign-In instance
+  // serverClientId = WEB_CLIENT_ID dari .env Laravel
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: '672967726472-chqbv8hfl85h6m8vvq764msaep7umnn6.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
+
+  /// Login menggunakan Google — kirim ID Token ke Laravel
+  Future<AuthResult> loginWithGoogle() async {
+    // 1. Tampilkan dialog pilih akun Google
+    final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) {
+      throw const AuthException('Login Google dibatalkan.');
+    }
+
+    // 2. Ambil authentication credentials
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
+
+    final String? idToken = googleAuth.idToken;
+    if (idToken == null) {
+      await _googleSignIn.signOut();
+      throw const AuthException(
+        'Gagal mendapatkan token dari Google. Coba lagi.',
+      );
+    }
+
+    // 3. Kirim ID Token ke Laravel backend
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/auth/google'),
+          headers: const {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'id_token': idToken}),
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final body = _decodeResponse(response.body);
+    final success = body['success'] == true;
+
+    if (!success || response.statusCode < 200 || response.statusCode >= 300) {
+      await _googleSignIn.signOut();
+      throw AuthException(_readErrorMessage(body));
+    }
+
+    final data = body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const AuthException('Response login tidak valid.');
+    }
+
+    final result = AuthResult.fromJson(data);
+    await _storage.write(key: _tokenKey, value: result.token);
+    await _storage.write(key: _tokenTypeKey, value: result.tokenType);
+    await _storage.write(
+      key: _userKey,
+      value: jsonEncode(result.user.toJson()),
+    );
+
+    return result;
+  }
 
   Future<AuthResult> login({
     required String email,
