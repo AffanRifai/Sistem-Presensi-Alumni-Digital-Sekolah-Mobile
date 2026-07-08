@@ -141,7 +141,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
     final picked = await showDialog<DateTime>(
       context: context,
       builder: (BuildContext context) {
-        // Variabel sementara untuk menyimpan pilihan di dalam dialog
         int tempYear = _selectedMonth.year;
         int tempMonth = _selectedMonth.month;
 
@@ -176,7 +175,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // --- Pemilih Tahun ---
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -198,8 +196,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-
-                    // --- Grid Pemilih Bulan ---
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -271,10 +267,8 @@ class _ParentHomePageState extends State<ParentHomePage> {
       },
     );
 
-    // Jika user menekan tombol batal atau dismiss dialog
     if (picked == null) return;
 
-    // Perbarui bulan yang dipilih dan muat ulang data
     setState(() => _selectedMonth = DateTime(picked.year, picked.month));
     await _loadHistory();
   }
@@ -316,6 +310,13 @@ class _ParentHomePageState extends State<ParentHomePage> {
     );
   }
 
+  void _resetToCurrentMonth() {
+    setState(() {
+      _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+    });
+    _loadHistory();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -338,6 +339,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
               ),
               child: Row(
                 children: [
+                  // HAPUS: IconButton panah kembali di sini
                   const CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.white,
@@ -391,6 +393,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
                 selectedMonthLabel: _formatMonth(_selectedMonth),
                 onPickMonth: _isLoading ? null : _pickMonth,
                 onRetry: _loadHistory,
+                onBack: _resetToCurrentMonth,
               ),
             ),
           ],
@@ -409,6 +412,7 @@ class _HistoryContent extends StatelessWidget {
   final String selectedMonthLabel;
   final VoidCallback? onPickMonth;
   final VoidCallback onRetry;
+  final VoidCallback onBack;
 
   const _HistoryContent({
     required this.isLoading,
@@ -419,6 +423,7 @@ class _HistoryContent extends StatelessWidget {
     required this.selectedMonthLabel,
     required this.onPickMonth,
     required this.onRetry,
+    required this.onBack,
   });
 
   @override
@@ -433,15 +438,10 @@ class _HistoryContent extends StatelessWidget {
 
     final data = summary;
     if (data == null || data.profile == null) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Data siswa atau riwayat presensi tidak ditemukan.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54),
-          ),
-        ),
+      return _EmptyState(
+        message: 'Data siswa atau riwayat presensi tidak ditemukan.',
+        onRetry: onRetry,
+        onBack: onBack,
       );
     }
 
@@ -477,6 +477,104 @@ class _HistoryContent extends StatelessWidget {
   }
 }
 
+class _EmptyState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onBack;
+
+  const _EmptyState({
+    required this.message,
+    required this.onRetry,
+    required this.onBack,
+  });
+
+  static const Color primaryBlue = Color(0xFF3E87D8);
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 72,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Silakan coba bulan lain atau periksa kembali data Anda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton.icon(
+                    onPressed: onBack,
+                    icon: const Icon(Icons.arrow_back, size: 18),
+                    label: const Text('Reset ke Bulan Ini'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.black54,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: ElevatedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Coba Lagi'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MessageState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -491,13 +589,37 @@ class _MessageState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
+            const SizedBox(height: 16),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
+              style: const TextStyle(color: Colors.black54, fontSize: 16),
             ),
-            const SizedBox(height: 12),
-            TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 200,
+              child: ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Coba Lagi'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3E87D8),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
