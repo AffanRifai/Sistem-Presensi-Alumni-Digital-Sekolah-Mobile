@@ -27,10 +27,13 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
 
   final AttendanceRecapService _attendanceRecapService =
       AttendanceRecapService();
+  final TextEditingController _monthlySearchController =
+      TextEditingController();
 
   RecapFilterMode _mode = RecapFilterMode.harian;
   DateTime _selectedDate = DateTime.now();
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  String _monthlySearchQuery = '';
   bool _isLoading = true;
   String? _errorMessage;
   List<DailyAttendanceRow> _dailyRows = const [];
@@ -48,6 +51,12 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
   void initState() {
     super.initState();
     _loadRecap();
+  }
+
+  @override
+  void dispose() {
+    _monthlySearchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadRecap() async {
@@ -194,7 +203,17 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
   }
 
   List<Map<String, dynamic>> get _bulananRows {
-    return _monthlyRows.map((row) => row.toTableRow()).toList();
+    final query = _monthlySearchQuery.trim().toLowerCase();
+    final rows = _monthlyRows.map((row) => row.toTableRow()).toList();
+
+    if (query.isEmpty) {
+      return rows;
+    }
+
+    return rows.where((row) {
+      final name = row['name']?.toString().toLowerCase() ?? '';
+      return name.contains(query);
+    }).toList();
   }
 
   @override
@@ -322,6 +341,55 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                       ),
                     ),
                   ),
+                  if (_mode == RecapFilterMode.bulanan) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _monthlySearchController,
+                      enabled: !_isLoading,
+                      onChanged: (value) {
+                        setState(() => _monthlySearchQuery = value);
+                      },
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama siswa',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: primaryBlue,
+                        ),
+                        suffixIcon: _monthlySearchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  _monthlySearchController.clear();
+                                  setState(() => _monthlySearchQuery = '');
+                                },
+                              ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD9E2EC),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD9E2EC),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: primaryBlue),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   _RecapContent(
                     isLoading: _isLoading,
