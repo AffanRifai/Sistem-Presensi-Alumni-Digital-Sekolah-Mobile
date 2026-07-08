@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'data/job_vacancy_service.dart';
+import '../../core/config/api_config.dart';
 
 class JobVacancyPage extends StatefulWidget {
   const JobVacancyPage({super.key});
@@ -147,7 +148,7 @@ class _JobCard extends StatelessWidget {
                               child: Image.network(
                                 job.companyLogo!.startsWith('http')
                                     ? job.companyLogo!
-                                    : 'http://192.168.100.12:8000/storage/${job.companyLogo}',
+                                    : '${ApiConfig.storageUrl}/${job.companyLogo}',
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) => Icon(Icons.business, color: Colors.grey.shade400),
                               ),
@@ -334,7 +335,7 @@ class _JobCard extends StatelessWidget {
                                 child: Image.network(
                                   job.companyLogo!.startsWith('http')
                                       ? job.companyLogo!
-                                      : 'http://192.168.100.12:8000/storage/${job.companyLogo}',
+                                      : '${ApiConfig.storageUrl}/${job.companyLogo}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) => Icon(Icons.business, color: Colors.grey.shade400, size: 40),
                                 ),

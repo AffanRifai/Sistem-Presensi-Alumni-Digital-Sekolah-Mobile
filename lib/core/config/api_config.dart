@@ -14,8 +14,8 @@ class ApiConfig {
       return 'http://localhost:8000/api/v1';
     }
 
-    return 'http://192.168.1.20:8000/api/v1';
-  }
+    return 'http://192.168.100.12:8000/api/v1';
+  } 
 
   static String get storageUrl {
     final base = baseUrl.replaceAll('/api/v1', '');

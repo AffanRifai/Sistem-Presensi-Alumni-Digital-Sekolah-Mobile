@@ -7,6 +7,7 @@ import 'data/alumni_event_service.dart';
 // Asumsi model AlumniEvent berada di file terpisah atau di dalam service
 // Pastikan import ini sesuai dengan struktur folder kamu
 import 'data/alumni_event_service.dart' show AlumniEvent; 
+import '../../core/config/api_config.dart';
 
 class AlumniEventFormPage extends StatefulWidget {
   final AlumniEvent? eventToEdit;
@@ -208,7 +209,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                                       image: NetworkImage(
                                         widget.eventToEdit!.bannerImage!.startsWith('http')
                                             ? widget.eventToEdit!.bannerImage!
-                                            : 'http://192.168.100.12:8000/storage/${widget.eventToEdit!.bannerImage}',
+                                            : '${ApiConfig.storageUrl}/${widget.eventToEdit!.bannerImage}',
                                       ),
                                       fit: BoxFit.cover,
                                     )
