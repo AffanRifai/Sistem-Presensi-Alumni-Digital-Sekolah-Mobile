@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '/features/home/home_page.dart';
 import 'alumni_register_page.dart';
 import 'pending_verification_page.dart';
+import '../orangtua/parent_home_page.dart';
 
 import 'data/auth_service.dart';
 
@@ -43,18 +44,26 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
       
-      if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending') {
-        Navigator.pushReplacement(
+if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending') {
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
+          (route) => false,
         );
       } else if (result.user.role == 'alumni' && result.user.verificationStatus == 'rejected') {
         _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
         await _authService.logout();
+      } else if (result.user.role == 'parent') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const ParentHomePage()),
+          (route) => false,
+        );
       } else {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
         );
       }
     } on AuthException catch (error) {

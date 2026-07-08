@@ -4,6 +4,7 @@ import 'alumni_event_detail_page.dart';
 import 'alumni_event_form_page.dart';
 import 'data/alumni_event_service.dart';
 import '../auth/data/auth_service.dart';
+import '../../core/config/api_config.dart';
 
 class AlumniEventPage extends StatefulWidget {
   const AlumniEventPage({super.key});
@@ -410,7 +411,7 @@ class _EventCard extends StatelessWidget {
                     child: Image.network(
                       event.bannerImage!.startsWith('http')
                           ? event.bannerImage!
-                          : 'http://192.168.100.12:8000/storage/${event.bannerImage}',
+                          : '${ApiConfig.storageUrl}/${event.bannerImage}',
                       width: double.infinity,
                       height: 150,
                       fit: BoxFit.cover,

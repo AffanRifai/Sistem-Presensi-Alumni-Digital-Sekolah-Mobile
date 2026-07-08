@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'data/alumni_event_service.dart';
-
+import '../../core/config/api_config.dart';
 class AlumniEventDetailPage extends StatelessWidget {
   final AlumniEvent event;
 
@@ -27,7 +27,7 @@ class AlumniEventDetailPage extends StatelessWidget {
               Image.network(
                 event.bannerImage!.startsWith('http')
                     ? event.bannerImage!
-                    : 'http://192.168.100.12:8000/storage/${event.bannerImage}',
+                    : '${ApiConfig.storageUrl}/${event.bannerImage}',
                 width: double.infinity,
                 height: 250,
                 fit: BoxFit.cover,
