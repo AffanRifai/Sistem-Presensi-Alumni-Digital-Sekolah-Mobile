@@ -1,7 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '/features/home/home_page.dart';
+import '../../core/config/api_config.dart';
+import 'alumni_register_page.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
+import 'widgets/google_login_button.dart';
 
 import 'data/auth_service.dart';
 
@@ -16,12 +23,21 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _googleAuthSubscription;
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isGoogleInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeGoogleSignIn();
+  }
 
   @override
   void dispose() {
+    _googleAuthSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -43,26 +59,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      if (result.user.role == 'alumni' &&
-          result.user.verificationStatus == 'pending') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PendingVerificationPage(),
-          ),
-          (route) => false,
-        );
-      } else if (result.user.role == 'alumni' &&
-          result.user.verificationStatus == 'rejected') {
-        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
-        await _authService.logout();
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
-      }
+      await _handleAuthResult(result);
     } on AuthException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
@@ -76,14 +73,179 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleGoogleLogin() {
-    _showMessage('Login Google belum dikonfigurasi.');
+  Future<void> _initializeGoogleSignIn() async {
+    if (_isGoogleInitialized) return;
+
+    try {
+      await GoogleSignIn.instance.initialize(
+        clientId: kIsWeb ? ApiConfig.googleWebClientId : null,
+        serverClientId: ApiConfig.googleWebClientId,
+      );
+      _googleAuthSubscription ??= GoogleSignIn.instance.authenticationEvents
+          .listen(_handleGoogleAuthEvent, onError: _handleGoogleAuthError);
+      _isGoogleInitialized = true;
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {
+      _isGoogleInitialized = false;
+    }
+  }
+
+  Future<void> _handleGoogleLogin() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _initializeGoogleSignIn();
+
+      if (!_isGoogleInitialized) {
+        throw const AuthException('Konfigurasi Google Sign-In belum valid.');
+      }
+
+      if (!GoogleSignIn.instance.supportsAuthenticate()) {
+        throw const AuthException(
+          'Gunakan tombol Google resmi yang tampil untuk login di Chrome.',
+        );
+      }
+
+      final account = await GoogleSignIn.instance.authenticate();
+      await _loginToLaravelWithGoogle(account);
+    } on GoogleSignInException catch (error) {
+      if (!mounted) return;
+      if (error.code == GoogleSignInExceptionCode.canceled) {
+        return;
+      }
+      _showMessage(error.description ?? 'Login Google gagal.');
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('Google login error: $error');
+      _showMessage(_formatGoogleError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleGoogleAuthEvent(
+    GoogleSignInAuthenticationEvent event,
+  ) async {
+    if (event is! GoogleSignInAuthenticationEventSignIn) return;
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _loginToLaravelWithGoogle(event.user);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
+    } catch (error) {
+      if (!mounted) return;
+      debugPrint('Google login event error: $error');
+      _showMessage(_formatGoogleError(error));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _handleGoogleAuthError(Object error) {
+    if (!mounted) return;
+    debugPrint('Google auth stream error: $error');
+    _resetGoogleSessionAfterReauthFailure(error);
+    _showMessage(_formatGoogleError(error));
+  }
+
+  Future<void> _resetGoogleSessionAfterReauthFailure(Object error) async {
+    final message = error.toString().toLowerCase();
+    if (!message.contains('account reauth failed')) return;
+
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // Ignore. The next tap on the Google button will create a fresh session.
+    }
+  }
+
+  String _formatGoogleError(Object error) {
+    final rawMessage = error.toString().toLowerCase();
+    if (rawMessage.contains('account reauth failed')) {
+      return 'Sesi Google gagal divalidasi. Coba klik Login Google lagi, atau pastikan origin Flutter sudah ditambahkan di Google Cloud OAuth.';
+    }
+
+    if (error is GoogleSignInException) {
+      final description = error.description;
+      if (description != null && description.trim().isNotEmpty) {
+        return description;
+      }
+      return 'Login Google gagal: ${error.code.name}.';
+    }
+
+    final message = error.toString();
+    if (message.trim().isNotEmpty && message != 'Exception') {
+      return message;
+    }
+
+    return 'Login Google gagal. Periksa konfigurasi Google OAuth.';
+  }
+
+  Future<void> _loginToLaravelWithGoogle(GoogleSignInAccount account) async {
+    final idToken = account.authentication.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const AuthException('ID Token Google tidak ditemukan.');
+    }
+
+    final result = await _authService.loginWithGoogleIdToken(idToken);
+    if (!mounted) return;
+    await _handleAuthResult(result);
+  }
+
+  Future<void> _handleAuthResult(AuthResult result) async {
+    if (result.user.role == 'alumni' &&
+        result.user.verificationStatus == 'pending') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PendingVerificationPage(),
+        ),
+        (route) => false,
+      );
+    } else if (result.user.role == 'alumni' &&
+        result.user.verificationStatus == 'rejected') {
+      _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+      await _authService.logout();
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
+    }
+  }
+
+  void _handleForgotPassword() {
+    _showMessage('Fitur lupa password belum tersedia.');
   }
 
   void _goBackToWelcome() {
-    Navigator.pushReplacement(
+    Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const WelcomePage()),
+      (route) => false,
+    );
+  }
+
+  void _goToAlumniRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AlumniRegisterPage()),
     );
   }
 
@@ -105,26 +267,6 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Stack(
           children: [
-            Positioned(
-              top: 4,
-              left: 8,
-              child: TextButton.icon(
-                onPressed: _isLoading ? null : _goBackToWelcome,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
-                label: const Text('Kembali'),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF3E87D8),
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-            ),
             SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -306,32 +448,70 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 14),
 
                         Center(
-                          child: SizedBox(
-                            width: 220,
-                            height: 44,
-                            child: OutlinedButton.icon(
-                              onPressed: _isLoading ? null : _handleGoogleLogin,
-                              icon: const _GoogleLogo(size: 18),
-                              label: const Text('Login Google'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black87,
-                                backgroundColor: Colors.white,
-                                side: const BorderSide(
-                                  color: Color.fromARGB(255, 157, 161, 165),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                          child: GoogleLoginButton(
+                            isLoading: _isLoading || !_isGoogleInitialized,
+                            onPressed: _handleGoogleLogin,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        TextButton(
+                          onPressed: _isLoading ? null : _handleForgotPassword,
+                          child: const Text(
+                            'Lupa password?',
+                            style: TextStyle(
+                              color: buttonColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              'Belum punya akun? ',
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: _isLoading ? null : _goToAlumniRegister,
+                              child: const Text(
+                                'Daftar',
+                                style: TextStyle(
+                                  color: buttonColor,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 4,
+              left: 8,
+              child: TextButton.icon(
+                onPressed: _isLoading ? null : _goBackToWelcome,
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
+                label: const Text('Kembali'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF3E87D8),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 8,
                   ),
                 ),
               ),
@@ -341,56 +521,4 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-}
-
-class _GoogleLogo extends StatelessWidget {
-  final double size;
-
-  const _GoogleLogo({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(size: Size.square(size), painter: _GoogleLogoPainter());
-  }
-}
-
-class _GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final strokeWidth = size.width * 0.18;
-    final rect = Offset.zero & size;
-    final arcRect = rect.deflate(strokeWidth / 2);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    paint.color = const Color(0xFF4285F4);
-    canvas.drawArc(arcRect, -0.05, 1.35, false, paint);
-
-    paint.color = const Color(0xFF34A853);
-    canvas.drawArc(arcRect, 1.28, 1.55, false, paint);
-
-    paint.color = const Color(0xFFFBBC05);
-    canvas.drawArc(arcRect, 2.75, 1.20, false, paint);
-
-    paint.color = const Color(0xFFEA4335);
-    canvas.drawArc(arcRect, 3.82, 1.35, false, paint);
-
-    paint.color = const Color(0xFF4285F4);
-    final centerY = size.height * 0.52;
-    canvas.drawLine(
-      Offset(size.width * 0.52, centerY),
-      Offset(size.width * 0.88, centerY),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.88, centerY),
-      Offset(size.width * 0.76, size.height * 0.70),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

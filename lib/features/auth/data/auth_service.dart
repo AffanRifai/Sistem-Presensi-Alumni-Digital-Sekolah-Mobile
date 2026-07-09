@@ -37,9 +37,9 @@ class AuthUser {
 
   factory AuthUser.fromJson(Map<String, dynamic> json) {
     return AuthUser(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      email: json['email'] as String,
+      id: _readInt(json['id']),
+      name: json['name']?.toString() ?? '-',
+      email: json['email']?.toString() ?? '-',
       phone: _readString(json, const [
         'phone',
         'no_hp',
@@ -49,9 +49,9 @@ class AuthUser {
         'whatsapp',
         'no_wa',
       ]),
-      role: json['role'] as String,
-      status: json['status'] as String,
-      schoolId: json['school_id'] as int?,
+      role: json['role']?.toString() ?? '-',
+      status: json['status']?.toString() ?? 'active',
+      schoolId: _readNullableInt(json['school_id']),
       verificationStatus: json['verification_status'] as String?,
     );
   }
@@ -80,6 +80,17 @@ class AuthUser {
 
     return null;
   }
+
+  static int _readInt(dynamic value) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  static int? _readNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
 }
 
 class AuthResult {
@@ -96,8 +107,8 @@ class AuthResult {
   factory AuthResult.fromJson(Map<String, dynamic> json) {
     return AuthResult(
       user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
-      token: json['token'] as String,
-      tokenType: json['token_type'] as String,
+      token: json['token']?.toString() ?? '',
+      tokenType: json['token_type']?.toString() ?? 'Bearer',
     );
   }
 }
@@ -146,6 +157,40 @@ class AuthService {
     }
 
     final result = AuthResult.fromJson(data);
+    await _saveAuthResult(result);
+
+    return result;
+  }
+
+  Future<AuthResult> loginWithGoogleIdToken(String idToken) async {
+    final response = await _client
+        .post(
+          Uri.parse('${ApiConfig.baseUrl}/auth/google'),
+          headers: const {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'id_token': idToken}),
+        )
+        .timeout(const Duration(seconds: 20));
+
+    final body = _decodeResponse(response.body);
+    final success = body['success'] == true;
+
+    if (!success || response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(_readErrorMessage(body));
+    }
+
+    final data = body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const AuthException('Response login Google tidak valid.');
+    }
+
+    final result = AuthResult.fromJson(data);
+    if (result.token.isEmpty) {
+      throw const AuthException('Token login Google tidak valid.');
+    }
+
     await _saveAuthResult(result);
 
     return result;
