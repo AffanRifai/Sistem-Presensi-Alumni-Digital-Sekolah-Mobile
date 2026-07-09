@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
   // Fungsi untuk melompat ke tab profil jika avatar diklik
   void _goToProfile(int profileIndex) {
     setState(() {
-      _selectedIndex = profileIndex; 
+      _selectedIndex = profileIndex;
     });
   }
 
@@ -51,32 +51,37 @@ class _HomePageState extends State<HomePage> {
         // Tampilkan layar loading saat mengecek data user
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            backgroundColor: Colors.white, 
-            body: Center(child: CircularProgressIndicator(color: primaryBlue))
+            backgroundColor: Colors.white,
+            body: Center(child: CircularProgressIndicator(color: primaryBlue)),
           );
         }
 
         // Cek apakah user adalah alumni
         final bool isAlumni = snapshot.data?.role == 'alumni';
-        final int profileIndex = isAlumni ? 2 : 2; // Keduanya sama-sama ada di index 2 sekarang
+        final int profileIndex = isAlumni
+            ? 2
+            : 2; // Keduanya sama-sama ada di index 2 sekarang
 
         // Tentukan halaman berdasarkan role
         final List<Widget> pages = isAlumni
             ? [
                 _AlumniHomeDashboard(
-                  userFuture: _userFuture, 
+                  userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
-                ),                         // Index 0: Home (Header Biru + Lowongan Kerja)
-                const AlumniEventPage(),   // Index 1: Event Alumni
+                ), // Index 0: Home (Header Biru + Lowongan Kerja)
+                const AlumniEventPage(), // Index 1: Event Alumni
                 const AlumniProfilePage(), // Index 2: Profil Alumni
               ]
             : [
                 _HomeDashboard(
-                  userFuture: _userFuture, 
+                  userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
-                ),                         // Index 0: Home Dashboard Normal (Siswa/Guru)
-                const ClassroomPage(),     // Index 1: Ruang Kelas
-                UserProfilePage(userFuture: _userFuture, authService: _authService), // Index 2: Profil User Biasa
+                ), // Index 0: Home Dashboard Normal (Siswa/Guru)
+                const ClassroomPage(), // Index 1: Ruang Kelas
+                UserProfilePage(
+                  userFuture: _userFuture,
+                  authService: _authService,
+                ), // Index 2: Profil User Biasa
               ];
 
         // Proteksi jika index di luar batas saat perpindahan role
@@ -85,10 +90,7 @@ class _HomePageState extends State<HomePage> {
 
         return Scaffold(
           backgroundColor: white,
-          body: IndexedStack(
-            index: safeIndex,
-            children: pages,
-          ),
+          body: IndexedStack(index: safeIndex, children: pages),
           bottomNavigationBar: _MainBottomNavigation(
             isAlumni: isAlumni,
             selectedIndex: safeIndex,
@@ -118,11 +120,9 @@ class _AlumniHomeDashboard extends StatelessWidget {
       children: [
         // 1. Header Biru tetap dipertahankan
         _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
-        
+
         // 2. Sisa layar di bawahnya langsung diisi oleh halaman Lowongan Kerja
-        const Expanded(
-          child: JobVacancyPage(),
-        ),
+        const Expanded(child: JobVacancyPage()),
       ],
     );
   }
@@ -145,7 +145,7 @@ class _HomeDashboard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _HeaderSection(userFuture: userFuture),
+          _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
           const SizedBox(height: 22),
           FutureBuilder<AuthUser?>(
             future: userFuture,
@@ -164,9 +164,6 @@ class _HomeDashboard extends StatelessWidget {
               return _MenuSection(userFuture: userFuture);
             },
           ),
-          _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
-          const SizedBox(height: 32),
-          _MenuSection(userFuture: userFuture),
         ],
       ),
     );
@@ -216,7 +213,7 @@ class _HeaderSection extends StatelessWidget {
               ),
             ),
           ),
-          
+
           // Main Content
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +263,10 @@ class _HeaderSection extends StatelessWidget {
                             ),
                             const SizedBox(height: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
@@ -300,8 +300,6 @@ class _HeaderSection extends StatelessWidget {
                       Icons.notifications_none_rounded,
                       color: Colors.white,
                     ),
-                    onPressed: () => _showNotificationInfo(context),
-                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26),
                     tooltip: 'Notifikasi',
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withValues(alpha: 0.15),
@@ -619,13 +617,6 @@ class _ParentInfoCardEmpty extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(color: Colors.black54),
       ),
-  void _showNotificationInfo(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Belum ada notifikasi baru.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      )
     );
   }
 }
@@ -720,7 +711,7 @@ class _MenuSection extends StatelessWidget {
                   crossAxisCount: 3,
                   mainAxisSpacing: 24,
                   crossAxisSpacing: 16,
-                  childAspectRatio: 0.72, 
+                  childAspectRatio: 0.72,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -835,35 +826,71 @@ class _MainBottomNavigation extends StatelessWidget {
     final List<BottomNavigationBarItem> navItems = isAlumni
         ? const [
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_outlined)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home),
+              ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.event_note_outlined)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.event_note)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.event_note_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.event_note),
+              ),
               label: 'Event',
             ),
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person_outline),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person),
+              ),
               label: 'Profil',
             ),
           ]
         : const [
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_outlined)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home),
+              ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.class_outlined)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.class_)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.class_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.class_),
+              ),
               label: 'Ruang Kelas',
             ),
             BottomNavigationBarItem(
-              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)),
-              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)),
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person_outline),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person),
+              ),
               label: 'Profil',
             ),
           ];
@@ -871,9 +898,7 @@ class _MainBottomNavigation extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       child: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -882,8 +907,14 @@ class _MainBottomNavigation extends StatelessWidget {
         elevation: 0,
         selectedItemColor: const Color(0xFF1E88E5), // primaryBlue
         unselectedItemColor: Colors.grey.shade500,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
+        selectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 11,
+        ),
         type: BottomNavigationBarType.fixed,
         items: navItems,
       ),
