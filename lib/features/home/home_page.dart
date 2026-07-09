@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
@@ -9,7 +10,8 @@ import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
-import '../siswa/riwayat_kehadiran_page.dart';
+import '../siswa/data/student_attendance_models.dart';
+import '../siswa/data/student_attendance_service.dart';
 import 'classroom_page.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
@@ -34,6 +36,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _userFuture = _authService.readUser();
+    
+    // Inisialisasi token FCM perangkat dan daftarkan ke Laravel backend
+    FcmService().init();
   }
 
   // Fungsi untuk melompat ke tab profil jika avatar diklik
@@ -41,6 +46,33 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedIndex = profileIndex;
     });
+  }
+
+  void _handleBottomNavTap(
+    BuildContext context,
+    int index,
+    bool isAlumni,
+    bool isStudent,
+  ) {
+    if (isStudent && index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ScanQrAttendancePage()),
+      );
+      return;
+    }
+
+    if (isAlumni) {
+      setState(() => _selectedIndex = index);
+      return;
+    }
+
+    if (index == 2) {
+      setState(() => _selectedIndex = 2);
+      return;
+    }
+
+    setState(() => _selectedIndex = index);
   }
 
   @override
@@ -58,9 +90,8 @@ class _HomePageState extends State<HomePage> {
 
         // Cek apakah user adalah alumni
         final bool isAlumni = snapshot.data?.role == 'alumni';
-        final int profileIndex = isAlumni
-            ? 2
-            : 2; // Keduanya sama-sama ada di index 2 sekarang
+        final bool isStudent = snapshot.data?.role == 'student';
+        final int profileIndex = 2;
 
         // Tentukan halaman berdasarkan role
         final List<Widget> pages = isAlumni
@@ -93,8 +124,10 @@ class _HomePageState extends State<HomePage> {
           body: IndexedStack(index: safeIndex, children: pages),
           bottomNavigationBar: _MainBottomNavigation(
             isAlumni: isAlumni,
+            isStudent: isStudent,
             selectedIndex: safeIndex,
-            onTap: (index) => setState(() => _selectedIndex = index),
+            onTap: (index) =>
+                _handleBottomNavTap(context, index, isAlumni, isStudent),
           ),
         );
       },
@@ -159,6 +192,18 @@ class _HomeDashboard extends StatelessWidget {
 
               if (snapshot.data?.role == 'parent') {
                 return const _ParentTodayAttendanceSection();
+              }
+
+              if (snapshot.data?.role == 'student') {
+                return Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _StudentQuickAccessCard(),
+                    ),
+                  ],
+                );
               }
 
               return _MenuSection(userFuture: userFuture);
@@ -635,6 +680,273 @@ class _MenuItemData {
   });
 }
 
+class _StudentQuickAccessCard extends StatefulWidget {
+  const _StudentQuickAccessCard();
+
+  @override
+  State<_StudentQuickAccessCard> createState() =>
+      _StudentQuickAccessCardState();
+}
+
+class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
+  final StudentAttendanceService _service = StudentAttendanceService();
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<StudentAttendanceRecord> _records = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAttendance();
+  }
+
+  Future<void> _loadAttendance() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final summary = await _service.fetchCurrentStudentAttendance(
+        month: DateTime.now().month,
+        year: DateTime.now().year,
+      );
+      if (!mounted) return;
+      setState(() {
+        _records = summary.records.take(3).toList();
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Tidak bisa memuat riwayat kehadiran saat ini.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFFD6D9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE53935).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.history_outlined,
+                  color: Color(0xFFE53935),
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Riwayat Kehadiran',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Daftar kehadiran terbaru Anda bulan ini.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_errorMessage != null)
+            Text(
+              _errorMessage!,
+              style: const TextStyle(fontSize: 13, color: Colors.black54),
+            )
+          else if (_records.isEmpty)
+            const Text(
+              'Belum ada data kehadiran bulan ini.',
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFFFD6D9)),
+              ),
+              child: Column(
+                children: [
+                  const Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Tanggal',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Status',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      SizedBox(
+                        width: 70,
+                        child: Text(
+                          'Jam',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(
+                    height: 12,
+                    thickness: 1,
+                    color: Color(0xFFFFD6D9),
+                  ),
+                  ..._records.map((record) => _AttendanceRow(record: record)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttendanceRow extends StatelessWidget {
+  final StudentAttendanceRecord record;
+
+  const _AttendanceRow({required this.record});
+
+  Color _statusColor(String status) {
+    return switch (status) {
+      'present' => const Color(0xFF16A34A),
+      'late' => const Color(0xFFF59E0B),
+      'permission' => const Color(0xFF7C3AED),
+      'sick' => const Color(0xFF0F766E),
+      'absent' => const Color(0xFFDC2626),
+      _ => const Color(0xFF6B7280),
+    };
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(record.status);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              _formatDate(record.date),
+              style: const TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                record.statusLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: statusColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 70,
+            child: Text(
+              record.checkInTime != null && record.checkInTime!.isNotEmpty
+                  ? record.checkInTime!
+                  : '-',
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MenuSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
 
@@ -730,7 +1042,7 @@ class _MenuSection extends StatelessWidget {
 
   bool _isMenuVisibleForRole(String label, String? role) {
     if (role == 'student') {
-      return label == 'Riwayat Kehadiran' || label == 'Presensi QR';
+      return false;
     }
     if (role == 'teacher') {
       return label != 'Riwayat Kehadiran';
@@ -754,7 +1066,6 @@ class _MenuSection extends StatelessWidget {
 
     final Widget page = switch (item.label) {
       'Lihat Kelas Anda' => const ClassRecapListPage(),
-      'Riwayat Kehadiran' => const AttendanceHistoryPage(),
       'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
       _ => const SelectClassDatePage(mode: PresensiEntryMode.manual),
     };
@@ -811,11 +1122,13 @@ class _MenuTile extends StatelessWidget {
 
 class _MainBottomNavigation extends StatelessWidget {
   final bool isAlumni;
+  final bool isStudent;
   final int selectedIndex;
   final ValueChanged<int> onTap;
 
   const _MainBottomNavigation({
     required this.isAlumni,
+    required this.isStudent,
     required this.selectedIndex,
     required this.onTap,
   });
@@ -848,6 +1161,84 @@ class _MainBottomNavigation extends StatelessWidget {
               label: 'Event',
             ),
             BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person_outline),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person),
+              ),
+              label: 'Profil',
+            ),
+          ]
+        : isStudent
+        ? [
+            const BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home),
+              ),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF1E88E5).withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.qr_code_scanner,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF1E88E5).withValues(alpha: 0.28),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.qr_code_scanner,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+              label: 'QR',
+            ),
+            const BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
                 child: Icon(Icons.person_outline),
