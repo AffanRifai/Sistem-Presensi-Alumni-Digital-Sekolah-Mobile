@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '/features/home/home_page.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
-import '../orangtua/parent_home_page.dart';
 
 import 'data/auth_service.dart';
 
@@ -57,12 +56,6 @@ class _LoginPageState extends State<LoginPage> {
           result.user.verificationStatus == 'rejected') {
         _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
         await _authService.logout();
-      } else if (result.user.role == 'parent') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const ParentHomePage()),
-          (route) => false,
-        );
       } else {
         Navigator.pushAndRemoveUntil(
           context,
@@ -106,7 +99,6 @@ class _LoginPageState extends State<LoginPage> {
     const Color fieldColor = Color(0xFFFFFFFF);
     const Color buttonColor = Color(0xFF3E87D8);
     const Color iconColor = Color(0xFF7A8B96);
-
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -164,7 +156,14 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color.fromARGB(255, 157, 160, 164)),
+                                  border: Border.all(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      157,
+                                      160,
+                                      164,
+                                    ),
+                                  ),
                                 ),
                                 child: TextField(
                                   controller: _emailController,
@@ -193,7 +192,14 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: const Color.fromARGB(255, 157, 160, 164)),
+                                  border: Border.all(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      157,
+                                      160,
+                                      164,
+                                    ),
+                                  ),
                                 ),
                                 child: TextField(
                                   controller: _passwordController,

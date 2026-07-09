@@ -40,7 +40,15 @@ class AuthUser {
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String,
-      phone: json['phone'] as String?,
+      phone: _readString(json, const [
+        'phone',
+        'no_hp',
+        'nomor_hp',
+        'no_telp',
+        'telp',
+        'whatsapp',
+        'no_wa',
+      ]),
       role: json['role'] as String,
       status: json['status'] as String,
       schoolId: json['school_id'] as int?,
@@ -59,6 +67,18 @@ class AuthUser {
       'school_id': schoolId,
       'verification_status': verificationStatus,
     };
+  }
+
+  static String? _readString(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+
+    return null;
   }
 }
 
@@ -142,6 +162,40 @@ class AuthService {
 
   Future<String?> readToken() => _storage.read(key: _tokenKey);
 
+  Future<AuthUser?> refreshCurrentUser() async {
+    final token = await readToken();
+    if (token == null || token.isEmpty) {
+      return readUser();
+    }
+
+    final response = await _client
+        .get(
+          Uri.parse('${ApiConfig.baseUrl}/me'),
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(const Duration(seconds: 15));
+
+    final body = _decodeResponse(response.body);
+    final success = body['success'] == true;
+
+    if (!success || response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(_readErrorMessage(body));
+    }
+
+    final data = body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const AuthException('Response user tidak valid.');
+    }
+
+    final user = AuthUser.fromJson(data);
+    await _saveUser(user);
+
+    return user;
+  }
+
   Future<AuthUser?> readUser() async {
     final rawUser = await _storage.read(key: _userKey);
     if (rawUser == null) return null;
@@ -162,6 +216,10 @@ class AuthService {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _tokenTypeKey);
     await _storage.delete(key: _userKey);
+  }
+
+  Future<void> _saveUser(AuthUser user) async {
+    await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
   }
 
   Map<String, dynamic> _decodeResponse(String responseBody) {

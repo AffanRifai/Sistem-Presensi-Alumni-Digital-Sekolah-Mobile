@@ -4,6 +4,7 @@ import '../../core/network/api_exception.dart';
 import 'data/class_recap_models.dart';
 import 'data/class_recap_service.dart';
 import 'detail_rekap_kelas_page.dart';
+import 'kelas_theme.dart';
 
 class ClassRecapListPage extends StatefulWidget {
   const ClassRecapListPage({super.key});
@@ -13,18 +14,25 @@ class ClassRecapListPage extends StatefulWidget {
 }
 
 class _ClassRecapListPageState extends State<ClassRecapListPage> {
-  static const Color lightBlue = Color(0xFFBFE0F5);
-
   final ClassRecapService _classRecapService = ClassRecapService();
+  final TextEditingController _searchController = TextEditingController();
 
   List<ClassRecapModel> _classes = const [];
   bool _isLoading = true;
   String? _errorMessage;
+  String _selectedJurusan = 'Semua';
 
   @override
   void initState() {
     super.initState();
     _loadClasses();
+    _searchController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadClasses() async {
@@ -65,144 +73,231 @@ class _ClassRecapListPageState extends State<ClassRecapListPage> {
     );
   }
 
+  int get _totalStudents =>
+      _classes.fold<int>(0, (sum, c) => sum + c.studentCount);
+
+  List<String> get _jurusanOptions {
+    final set = <String>{'Semua'};
+    for (final c in _classes) {
+      if (c.major.trim().isNotEmpty) set.add(c.major);
+    }
+    return set.toList();
+  }
+
+  List<ClassRecapModel> get _filteredClasses {
+    final query = _searchController.text.trim().toLowerCase();
+    return _classes.where((c) {
+      final matchesQuery =
+          query.isEmpty ||
+          c.name.toLowerCase().contains(query) ||
+          c.major.toLowerCase().contains(query) ||
+          c.homeroomTeacherName.toLowerCase().contains(query);
+      final matchesJurusan =
+          _selectedJurusan == 'Semua' || c.major == _selectedJurusan;
+      return matchesQuery && matchesJurusan;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredClasses;
+    final showFilters =
+        !_isLoading && _errorMessage == null && _classes.isNotEmpty;
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [lightBlue, Color(0xFFEAF5FB)],
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          _Header(
+            isLoading: _isLoading,
+            totalClasses: _classes.length,
+            totalStudents: _totalStudents,
+            onRefresh: _loadClasses,
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Rekap Kelas',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.black87),
-                      onPressed: _isLoading ? null : _loadClasses,
-                    ),
-                  ],
-                ),
+          if (showFilters) ...[
+            const SizedBox(height: 14),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 20),
+            //   child: RecapSearchField(
+            //     controller: _searchController,
+            //     hintText: 'Cari nama kelas, atau jurusan',
+            //   ),
+            // ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: _jurusanOptions.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final label = _jurusanOptions[index];
+                  return RecapFilterPill(
+                    label: label,
+                    selected: label == _selectedJurusan,
+                    onTap: () => setState(() => _selectedJurusan = label),
+                  );
+                },
               ),
-              const SizedBox(height: 4),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
+            ),
+          ],
+          const SizedBox(height: 12),
+          Expanded(
+            child: _isLoading
+                ? const _ClassListSkeleton()
+                : _errorMessage != null
+                ? RecapErrorState(
+                    message: _errorMessage!,
+                    onRetry: _loadClasses,
+                  )
+                : filtered.isEmpty
+                ? RecapEmptyState(
+                    icon: _classes.isEmpty
+                        ? Icons.school_outlined
+                        : Icons.search_off_rounded,
+                    title: _classes.isEmpty
+                        ? 'Belum ada kelas'
+                        : 'Kelas tidak ditemukan',
+                    subtitle: _classes.isEmpty
+                        ? 'Data kelas akan muncul di sini setelah admin menambahkannya.'
+                        : 'Coba ubah kata kunci pencarian atau filter jurusan.',
+                  )
+                : RefreshIndicator(
+                    color: KelasPalette.primary,
+                    onRefresh: _loadClasses,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: filtered.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 14),
+                      itemBuilder: (context, index) {
+                        final classData = filtered[index];
+                        return _ClassCard(
+                          classData: classData,
+                          onTap: () => _openDetail(classData),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ==========================================================
+// Header
+// ==========================================================
+
+class _Header extends StatelessWidget {
+  final bool isLoading;
+  final int totalClasses;
+  final int totalStudents;
+  final VoidCallback onRefresh;
+
+  const _Header({
+    required this.isLoading,
+    required this.totalClasses,
+    required this.totalStudents,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Expanded(
                   child: Text(
-                    'Pilih kelas untuk melihat rekap lengkap.',
-                    style: TextStyle(fontSize: 13, color: Colors.black54),
+                    'Kelas Anda',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: KelasPalette.ink,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _ClassList(
-                  isLoading: _isLoading,
-                  errorMessage: _errorMessage,
-                  classes: _classes,
-                  onRetry: _loadClasses,
-                  onSelected: _openDetail,
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: isLoading ? null : onRefresh,
                 ),
+              ],
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                'Pilih kelas untuk melihat detail lengkap.',
+                style: TextStyle(fontSize: 14, color: KelasPalette.slate),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ClassList extends StatelessWidget {
-  final bool isLoading;
-  final String? errorMessage;
-  final List<ClassRecapModel> classes;
-  final VoidCallback onRetry;
-  final ValueChanged<ClassRecapModel> onSelected;
+// ==========================================================
+// Skeleton loading
+// ==========================================================
 
-  const _ClassList({
-    required this.isLoading,
-    required this.errorMessage,
-    required this.classes,
-    required this.onRetry,
-    required this.onSelected,
-  });
+class _ClassListSkeleton extends StatelessWidget {
+  const _ClassListSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.black54),
-              ),
-              const SizedBox(height: 12),
-              TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (classes.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada kelas.',
-          style: TextStyle(color: Colors.black54),
-        ),
-      );
-    }
-
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      itemCount: classes.length,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+      itemCount: 5,
       separatorBuilder: (context, index) => const SizedBox(height: 14),
-      itemBuilder: (context, index) {
-        final classData = classes[index];
-        return _ClassCard(
-          classData: classData,
-          onTap: () => onSelected(classData),
-        );
-      },
+      itemBuilder: (context, index) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: KelasPalette.border),
+        ),
+        child: Row(
+          children: [
+            const ShimmerBox(
+              height: 52,
+              width: 52,
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  ShimmerBox(height: 14, width: 140),
+                  SizedBox(height: 8),
+                  ShimmerBox(height: 11, width: 100),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
+// ==========================================================
+// Kartu kelas
+// ==========================================================
 
 class _ClassCard extends StatelessWidget {
   final ClassRecapModel classData;
@@ -210,64 +305,72 @@ class _ClassCard extends StatelessWidget {
 
   const _ClassCard({required this.classData, required this.onTap});
 
-  static const Color iconBg = Color(0xFFDDEEF8);
-  static const Color iconColor = Color(0xFF3E87D8);
-
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: KelasPalette.border),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.school_outlined,
-                color: iconColor,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     classData.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black87,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w500,
+                      color: KelasPalette.ink,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
-                    '${classData.studentCount} Siswa • Wali: ${classData.homeroomTeacherName}',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    '${classData.grade} ${classData.major}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: KelasPalette.slate,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Wali kelas: ${classData.homeroomTeacherName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: KelasPalette.slate,
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.black38),
+            const SizedBox(width: 6),
+            Text(
+              '${classData.studentCount} siswa',
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: KelasPalette.ink,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: KelasPalette.slateMuted,
+            ),
           ],
         ),
       ),

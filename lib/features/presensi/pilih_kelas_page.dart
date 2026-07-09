@@ -246,8 +246,8 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
                           backgroundColor: primaryBlue,
                           foregroundColor: Colors.white,
                           textStyle: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
@@ -291,8 +291,8 @@ class _Header extends StatelessWidget {
               title,
               style: const TextStyle(
                 color: Colors.black87,
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
               ),
             ),
             Padding(
@@ -357,7 +357,7 @@ class _SectionTitle extends StatelessWidget {
           style: const TextStyle(
             color: Colors.black87,
             fontSize: 17,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 4),
@@ -397,7 +397,7 @@ class _DatePickerCard extends StatelessWidget {
                 style: const TextStyle(
                   color: Colors.black87,
                   fontSize: 14,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -450,7 +450,7 @@ class _ClassTile extends StatelessWidget {
                     schoolClass.displayName,
                     style: const TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w500,
                       color: Colors.black87,
                     ),
                   ),

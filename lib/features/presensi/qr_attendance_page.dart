@@ -237,15 +237,6 @@ class _QrHeader extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Presensi QR',
-            style: TextStyle(
-              color: _QrAttendancePageState.black,
-              fontSize: 25,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ],
       ),
     );
@@ -281,15 +272,15 @@ class _QrCard extends StatelessWidget {
             'Scan QR untuk presensi',
             style: TextStyle(
               color: _QrAttendancePageState.black,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Minta siswa membuka menu Presensi QR lalu scan kode ini.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, fontSize: 12),
+            style: TextStyle(color: Colors.black54, fontSize: 14),
           ),
           const SizedBox(height: 18),
           Container(
@@ -343,8 +334,8 @@ class _AttendanceList extends StatelessWidget {
           'Sudah Presensi (${presentStudents.length}/$totalStudents)',
           style: const TextStyle(
             color: _QrAttendancePageState.black,
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
         const SizedBox(height: 12),
@@ -424,13 +415,14 @@ class _PresentStudentTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                     color: Colors.black87,
                   ),
                 ),
                 Text(
                   'NIS: ${student.nis}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
               ],
             ),
@@ -439,7 +431,8 @@ class _PresentStudentTile extends StatelessWidget {
             student.checkInTime ?? '-',
             style: const TextStyle(
               color: _QrAttendancePageState.black,
-              fontWeight: FontWeight.w900,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

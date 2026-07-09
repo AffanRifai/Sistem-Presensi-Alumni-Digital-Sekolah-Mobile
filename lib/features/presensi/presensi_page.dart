@@ -40,16 +40,8 @@ extension KehadiranStatusX on KehadiranStatus {
 
   Color get color {
     switch (this) {
-      case KehadiranStatus.hadir:
-        return const Color(0xFF1E88E5);
-      case KehadiranStatus.terlambat:
-        return const Color(0xFFF39C12);
-      case KehadiranStatus.izin:
-        return const Color(0xFF8E44EC);
-      case KehadiranStatus.sakit:
-        return const Color(0xFF20C997);
-      case KehadiranStatus.alpha:
-        return const Color(0xFFE53935);
+      default:
+        return const Color.fromARGB(255, 59, 59, 59);
     }
   }
 
@@ -404,13 +396,15 @@ class _StudentKehadiranPageState extends State<StudentKehadiranPage> {
                 children: [
                   Expanded(
                     child: Text(
+                      'Hadir: ${_countStatus(KehadiranStatus.hadir)}  '
                       'Izin: ${_countStatus(KehadiranStatus.izin)}  '
                       'Sakit: ${_countStatus(KehadiranStatus.sakit)}  '
                       'Alpha: ${_countStatus(KehadiranStatus.alpha)}  '
                       'Terlambat: ${_countStatus(KehadiranStatus.terlambat)}',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 13.5,
                         color: Colors.black54,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -462,7 +456,7 @@ class _ManualHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.translate(
-      offset: const Offset(-60, 0),
+      offset: const Offset(-80, 0),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 18, 20, 12),
         child: Column(
@@ -474,14 +468,14 @@ class _ManualHeader extends StatelessWidget {
               'Presensi Manual',
               style: TextStyle(
                 color: Colors.black87,
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
               ),
             ),
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                '$className • $dateText',
+                '$className $dateText',
                 style: const TextStyle(color: Colors.black54, fontSize: 13),
               ),
             ),
@@ -615,15 +609,15 @@ class _StudentRow extends StatelessWidget {
                   student.name,
                   maxLines: 3,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                     color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   'NIS: ${student.nim}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  style: const TextStyle(fontSize: 13.5, color: Colors.black45),
                 ),
               ],
             ),
@@ -664,8 +658,8 @@ class _StudentRow extends StatelessWidget {
                   child: Text(
                     status.label,
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
                       color: status.color,
                     ),
                   ),

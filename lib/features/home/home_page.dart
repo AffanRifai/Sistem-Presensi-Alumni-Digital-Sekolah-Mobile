@@ -5,11 +5,13 @@ import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
 import '../auth/data/auth_service.dart';
 import '../kelas/list_rekap_kelas_page.dart';
+import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../siswa/riwayat_kehadiran_page.dart';
 import 'classroom_page.dart';
+import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -66,10 +68,24 @@ class _HomeDashboard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _HeaderSection(userFuture: userFuture),
-          const SizedBox(height: 20),
-          const SizedBox(height: 18),
-          const SizedBox(height: 26),
-          _MenuSection(userFuture: userFuture),
+          const SizedBox(height: 22),
+          FutureBuilder<AuthUser?>(
+            future: userFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 180,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              if (snapshot.data?.role == 'parent') {
+                return const _ParentTodayAttendanceSection();
+              }
+
+              return _MenuSection(userFuture: userFuture);
+            },
+          ),
         ],
       ),
     );
@@ -150,7 +166,14 @@ class _HeaderSection extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _showNotificationInfo(context),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationPage(),
+                        ),
+                      );
+                    },
                     icon: const Icon(
                       Icons.notifications_none_rounded,
                       color: Colors.white,
@@ -183,11 +206,290 @@ class _HeaderSection extends StatelessWidget {
       ),
     );
   }
+}
 
-  void _showNotificationInfo(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Belum ada notifikasi baru.')));
+class _ParentTodayAttendanceSection extends StatefulWidget {
+  const _ParentTodayAttendanceSection();
+
+  @override
+  State<_ParentTodayAttendanceSection> createState() =>
+      _ParentTodayAttendanceSectionState();
+}
+
+class _ParentTodayAttendanceSectionState
+    extends State<_ParentTodayAttendanceSection> {
+  final ParentTodayAttendanceService _service = ParentTodayAttendanceService();
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<ParentChildAttendance> _children = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummary();
+  }
+
+  Future<void> _loadSummary() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final summary = await _service.fetchSummary();
+      if (!mounted) return;
+      setState(() {
+        _children = summary.children;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Tidak bisa memuat informasi kehadiran anak.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Kehadiran Anak Hari Ini',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w500,
+              color: _HomePageState.darkBlue,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Ringkasan presensi anak berdasarkan data hari ini.',
+            style: TextStyle(fontSize: 13.5, color: Colors.black54),
+          ),
+          const SizedBox(height: 14),
+          if (_isLoading)
+            const _ParentInfoCardLoading()
+          else if (_errorMessage != null)
+            _ParentInfoCardError(message: _errorMessage!, onRetry: _loadSummary)
+          else if (_children.isEmpty)
+            const _ParentInfoCardEmpty()
+          else
+            ..._children.map(
+              (child) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ParentChildAttendanceCard(child: child),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentChildAttendanceCard extends StatelessWidget {
+  final ParentChildAttendance child;
+
+  const _ParentChildAttendanceCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(child.status);
+    final dateText = _formatLongDate(child.date);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Anak',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+          const SizedBox(height: 18),
+          _ParentInfoValue(label: 'Nama Anak', value: child.name),
+          _ParentInfoValue(label: 'NIS', value: child.nis),
+          _ParentInfoValue(label: 'NISN', value: child.nisn),
+          _ParentInfoValue(label: 'Kelas', value: child.className),
+          _ParentInfoValue(
+            label: 'Kehadiran Hari Ini',
+            value: child.statusLabel,
+            valueColor: statusColor,
+          ),
+          const SizedBox(height: 2),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              'Pada $dateText anak Anda "${child.name}" ${child.statusLabel.toUpperCase()} di sekolah.',
+              style: TextStyle(
+                color: statusColor,
+                fontSize: 13.5,
+                height: 1.4,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _statusColor(String status) {
+    return switch (status) {
+      'present' => const Color(0xFF16A34A),
+      'late' => const Color(0xFFF59E0B),
+      'permission' => const Color(0xFF7C3AED),
+      'sick' => const Color(0xFF0F766E),
+      'absent' => const Color(0xFFDC2626),
+      _ => const Color(0xFF6B7280),
+    };
+  }
+
+  String _formatLongDate(DateTime date) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return 'tanggal ${date.day}, bulan ${months[date.month - 1]}, tahun ${date.year}';
+  }
+}
+
+class _ParentInfoValue extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? valueColor;
+
+  const _ParentInfoValue({
+    required this.label,
+    required this.value,
+    this.valueColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black45,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14.5,
+              color: valueColor ?? Colors.black87,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentInfoCardLoading extends StatelessWidget {
+  const _ParentInfoCardLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      height: 160,
+      child: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ParentInfoCardError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ParentInfoCardError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+        ],
+      ),
+    );
+  }
+}
+
+class _ParentInfoCardEmpty extends StatelessWidget {
+  const _ParentInfoCardEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: const Text(
+        'Belum ada data anak yang terhubung dengan akun ini.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Colors.black54),
+      ),
+    );
   }
 }
 

@@ -14,105 +14,54 @@ class UserProfilePage extends StatelessWidget {
   });
 
   static const Color primaryBlue = Color(0xFF1E88E5);
-  static const Color darkBlue = Color(0xFF0D47A1);
+  static const Color textDark = Color(0xFF1F2937);
+  static const Color textMuted = Color(0xFF6B7280);
   static const Color softBlue = Color(0xFFEAF5FF);
+  static const Color borderColor = Color(0xFFE5E7EB);
+  static const Color red = Color(0xFFDC2626);
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: FutureBuilder<AuthUser?>(
-        future: userFuture,
+        future: _loadUser(),
         builder: (context, snapshot) {
           final user = snapshot.data;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: const Color(0xFFD8ECFF)),
+                const Text(
+                  'Profile Pengguna',
+                  style: TextStyle(
+                    color: textDark,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: Column(
-                    children: [
-                      const CircleAvatar(
-                        radius: 42,
-                        backgroundColor: softBlue,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 48,
-                          color: primaryBlue,
-                        ),
+                ),
+                const SizedBox(height: 18),
+                _ProfileCard(user: user),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _handleLogout(context),
+                    icon: const Icon(Icons.logout_rounded, size: 20),
+                    label: const Text('Logout'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFFCA5A5)),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        user?.name ?? 'User',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: darkBlue,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatRole(user?.role),
-                        style: const TextStyle(
-                          color: primaryBlue,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      _ProfileInfoRow(
-                        icon: Icons.email_outlined,
-                        label: 'Email',
-                        value: user?.email ?? '-',
-                      ),
-                      _ProfileInfoRow(
-                        icon: Icons.phone_outlined,
-                        label: 'No. HP',
-                        value: user?.phone?.isNotEmpty == true
-                            ? user!.phone!
-                            : '-',
-                      ),
-                      _ProfileInfoRow(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Status',
-                        value: _formatRole(user?.status),
-                      ),
-                      _ProfileInfoRow(
-                        icon: Icons.apartment_rounded,
-                        label: 'ID Sekolah',
-                        value: user?.schoolId?.toString() ?? '-',
-                      ),
-                      const SizedBox(height: 18),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton.icon(
-                          onPressed: () => _handleLogout(context),
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text('Logout'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            foregroundColor: Colors.white,
-                            textStyle: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -138,7 +87,7 @@ class UserProfilePage extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
+                backgroundColor: red,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Logout'),
@@ -159,55 +108,92 @@ class UserProfilePage extends StatelessWidget {
       (route) => false,
     );
   }
+
+  Future<AuthUser?> _loadUser() async {
+    try {
+      return await authService.refreshCurrentUser();
+    } catch (_) {
+      return userFuture;
+    }
+  }
 }
 
-class _ProfileInfoRow extends StatelessWidget {
-  final IconData icon;
+class _ProfileCard extends StatelessWidget {
+  final AuthUser? user;
+
+  const _ProfileCard({required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: UserProfilePage.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Profile',
+            style: TextStyle(
+              color: UserProfilePage.textDark,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Divider(
+            height: 1,
+            thickness: 1,
+            color: UserProfilePage.borderColor,
+          ),
+          const SizedBox(height: 18),
+          _ProfileInfoField(label: 'Nama', value: user?.name ?? '-'),
+          _ProfileInfoField(label: 'Role', value: _formatRole(user?.role)),
+          _ProfileInfoField(label: 'Email', value: user?.email ?? '-'),
+          _ProfileInfoField(
+            label: 'No. HP',
+            value: user?.phone?.isNotEmpty == true ? user!.phone! : '-',
+          ),
+          _ProfileInfoField(label: 'Status', value: _formatRole(user?.status)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileInfoField extends StatelessWidget {
   final String label;
   final String value;
 
-  const _ProfileInfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _ProfileInfoField({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: UserProfilePage.softBlue,
-              borderRadius: BorderRadius.circular(14),
+          Text(
+            label,
+            style: const TextStyle(
+              color: UserProfilePage.textMuted,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w500,
             ),
-            child: Icon(icon, color: UserProfilePage.primaryBlue, size: 22),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.black87,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: UserProfilePage.textDark,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              height: 1.2,
             ),
           ),
         ],
@@ -215,6 +201,7 @@ class _ProfileInfoRow extends StatelessWidget {
     );
   }
 }
+
 String _formatRole(String? value) {
   if (value == null || value.isEmpty) return '-';
 
