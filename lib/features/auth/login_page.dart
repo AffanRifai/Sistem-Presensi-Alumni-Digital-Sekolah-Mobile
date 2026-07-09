@@ -76,8 +76,45 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleGoogleLogin() {
-    _showMessage('Login Google belum dikonfigurasi.');
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _authService.loginWithGoogle();
+
+      if (!mounted) return;
+
+      if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'pending') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PendingVerificationPage(),
+          ),
+          (route) => false,
+        );
+      } else if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'rejected') {
+        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+        await _authService.logout();
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Tidak bisa terhubung ke server Laravel.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _goBackToWelcome() {

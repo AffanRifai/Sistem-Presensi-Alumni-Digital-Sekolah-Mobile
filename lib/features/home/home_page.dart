@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
@@ -35,6 +36,9 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _userFuture = _authService.readUser();
+    
+    // Inisialisasi token FCM perangkat dan daftarkan ke Laravel backend
+    FcmService().init();
   }
 
   // Fungsi untuk melompat ke tab profil jika avatar diklik
