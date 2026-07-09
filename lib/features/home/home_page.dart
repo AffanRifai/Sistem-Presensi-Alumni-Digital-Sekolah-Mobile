@@ -34,41 +34,117 @@ class _HomePageState extends State<HomePage> {
     _userFuture = _authService.readUser();
   }
 
+  // Fungsi untuk melompat ke tab profil jika avatar diklik
+  void _goToProfile(int profileIndex) {
+    setState(() {
+      _selectedIndex = profileIndex; 
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      _HomeDashboard(userFuture: _userFuture),
-      const ClassroomPage(),
-      UserProfilePage(userFuture: _userFuture, authService: _authService),
-    ];
+    return FutureBuilder<AuthUser?>(
+      future: _userFuture,
+      builder: (context, snapshot) {
+        // Tampilkan layar loading saat mengecek data user
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Colors.white, 
+            body: Center(child: CircularProgressIndicator(color: primaryBlue))
+          );
+        }
 
-    return Scaffold(
-      backgroundColor: white,
-      body: pages[_selectedIndex],
-      bottomNavigationBar: _MainBottomNavigation(
-        selectedIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-      ),
+        // Cek apakah user adalah alumni
+        final bool isAlumni = snapshot.data?.role == 'alumni';
+        final int profileIndex = isAlumni ? 2 : 2; // Keduanya sama-sama ada di index 2 sekarang
+
+        // Tentukan halaman berdasarkan role
+        final List<Widget> pages = isAlumni
+            ? [
+                _AlumniHomeDashboard(
+                  userFuture: _userFuture, 
+                  onProfileTap: () => _goToProfile(profileIndex),
+                ),                         // Index 0: Home (Header Biru + Lowongan Kerja)
+                const AlumniEventPage(),   // Index 1: Event Alumni
+                const AlumniProfilePage(), // Index 2: Profil Alumni
+              ]
+            : [
+                _HomeDashboard(
+                  userFuture: _userFuture, 
+                  onProfileTap: () => _goToProfile(profileIndex),
+                ),                         // Index 0: Home Dashboard Normal (Siswa/Guru)
+                const ClassroomPage(),     // Index 1: Ruang Kelas
+                UserProfilePage(userFuture: _userFuture, authService: _authService), // Index 2: Profil User Biasa
+              ];
+
+        // Proteksi jika index di luar batas saat perpindahan role
+        int safeIndex = _selectedIndex;
+        if (safeIndex >= pages.length) safeIndex = 0;
+
+        return Scaffold(
+          backgroundColor: white,
+          body: IndexedStack(
+            index: safeIndex,
+            children: pages,
+          ),
+          bottomNavigationBar: _MainBottomNavigation(
+            isAlumni: isAlumni,
+            selectedIndex: safeIndex,
+            onTap: (index) => setState(() => _selectedIndex = index),
+          ),
+        );
+      },
     );
   }
 }
 
+// ============================================================================
+// WIDGET KHUSUS ALUMNI (HEADER BIRU + LOWONGAN KERJA)
+// ============================================================================
+class _AlumniHomeDashboard extends StatelessWidget {
+  final Future<AuthUser?> userFuture;
+  final VoidCallback onProfileTap;
+
+  const _AlumniHomeDashboard({
+    required this.userFuture,
+    required this.onProfileTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // 1. Header Biru tetap dipertahankan
+        _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
+        
+        // 2. Sisa layar di bawahnya langsung diisi oleh halaman Lowongan Kerja
+        const Expanded(
+          child: JobVacancyPage(),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// WIDGET KHUSUS SISWA / GURU (HEADER BIRU + MENU KOTAK)
+// ============================================================================
 class _HomeDashboard extends StatelessWidget {
   final Future<AuthUser?> userFuture;
+  final VoidCallback onProfileTap;
 
-  const _HomeDashboard({required this.userFuture});
+  const _HomeDashboard({required this.userFuture, required this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.only(bottom: 24),
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _HeaderSection(userFuture: userFuture),
-          const SizedBox(height: 20),
-          const SizedBox(height: 18),
-          const SizedBox(height: 26),
+          _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
+          const SizedBox(height: 32),
           _MenuSection(userFuture: userFuture),
         ],
       ),
@@ -76,10 +152,14 @@ class _HomeDashboard extends StatelessWidget {
   }
 }
 
+// ============================================================================
+// WIDGET SHARED: HEADER BIRU & NAVIGASI BAWAH
+// ============================================================================
 class _HeaderSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
+  final VoidCallback onProfileTap;
 
-  const _HeaderSection({required this.userFuture});
+  const _HeaderSection({required this.userFuture, required this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
@@ -87,34 +167,63 @@ class _HeaderSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 30),
-      color: _HomePageState.primaryBlue,
+      padding: EdgeInsets.fromLTRB(24, topPadding + 24, 24, 40),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          const Positioned(
-            right: 4,
-            bottom: 0,
-            child: Icon(
-              Icons.auto_stories_rounded,
-              size: 94,
-              color: Colors.white24,
+          // Background Icon Pattern
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Transform.rotate(
+              angle: -0.2,
+              child: const Icon(
+                Icons.auto_stories_rounded,
+                size: 140,
+                color: Colors.white10,
+              ),
             ),
           ),
+          
+          // Main Content
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const CircleAvatar(
-                    radius: 27,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person_rounded,
-                      size: 31,
-                      color: _HomePageState.primaryBlue,
+                  // --- AVATAR YANG BISA DIKLIK ---
+                  GestureDetector(
+                    onTap: onProfileTap,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      child: const CircleAvatar(
+                        radius: 26,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.person_rounded,
+                          size: 30,
+                          color: Color(0xFF1E88E5),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: FutureBuilder<AuthUser?>(
                       future: userFuture,
@@ -124,24 +233,32 @@ class _HeaderSection extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Halo, ${user?.name ?? 'User'}',
+                              'Halo, ${user?.name ?? 'Pengguna'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              _formatRole(user?.role),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _formatRole(user?.role),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ],
@@ -151,31 +268,34 @@ class _HeaderSection extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => _showNotificationInfo(context),
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.white,
-                    ),
+                    icon: const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 26),
                     tooltip: 'Notifikasi',
                     style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.14),
+                      backgroundColor: Colors.white.withValues(alpha: 0.15),
+                      padding: const EdgeInsets.all(10),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 40),
               const Text(
-                'Selamat Datang di Sistem Presensi Digital Sekolah',
+                'Sistem Presensi\nDigital Sekolah',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 22,
+                  fontSize: 26,
                   height: 1.2,
                   fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Informasi akademik yang tersedia dalam satu dashboard.',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+              Text(
+                'Informasi akademik dan layanan sekolah tersedia dalam satu dashboard.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -185,9 +305,13 @@ class _HeaderSection extends StatelessWidget {
   }
 
   void _showNotificationInfo(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Belum ada notifikasi baru.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Belum ada notifikasi baru.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      )
+    );
   }
 }
 
@@ -241,24 +365,6 @@ class _MenuSection extends StatelessWidget {
       backgroundColor: Color(0xFFDDEBFF),
       iconColor: Color(0xFF2F80ED),
     ),
-    _MenuItemData(
-      icon: Icons.person_outline,
-      label: 'Profil Alumni',
-      backgroundColor: Color(0xFFDDF8D5),
-      iconColor: Color(0xFF45C653),
-    ),
-    _MenuItemData(
-      icon: Icons.event_note_outlined,
-      label: 'Event Alumni',
-      backgroundColor: Color(0xFFE7D6FF),
-      iconColor: Color(0xFF8E44EC),
-    ),
-    _MenuItemData(
-      icon: Icons.work_outline,
-      label: 'Lowongan Kerja',
-      backgroundColor: Color(0xFFFFDCD2),
-      iconColor: Color(0xFFFF7043),
-    ),
   ];
 
   @override
@@ -272,7 +378,7 @@ class _MenuSection extends StatelessWidget {
             .toList();
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -281,23 +387,25 @@ class _MenuSection extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: _HomePageState.darkBlue,
+                  color: Color(0xFF1A1A1A),
+                  letterSpacing: -0.5,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Pilih fitur yang ingin digunakan.',
-                style: TextStyle(fontSize: 13, color: Colors.black54),
+              Text(
+                'Pilih fitur layanan yang ingin Anda gunakan.',
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
+              const SizedBox(height: 24),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  mainAxisSpacing: 26,
-                  crossAxisSpacing: 18,
-                  childAspectRatio: 0.76,
+                  mainAxisSpacing: 24,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.72, 
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -318,20 +426,9 @@ class _MenuSection extends StatelessWidget {
     if (role == 'student') {
       return label == 'Riwayat Kehadiran' || label == 'Presensi QR';
     }
-
     if (role == 'teacher') {
-      return label != 'Riwayat Kehadiran' &&
-          label != 'Profil Alumni' &&
-          label != 'Event Alumni' &&
-          label != 'Lowongan Kerja';
+      return label != 'Riwayat Kehadiran';
     }
-
-    if (role == 'alumni') {
-      return label == 'Profil Alumni' ||
-          label == 'Event Alumni' ||
-          label == 'Lowongan Kerja';
-    }
-
     return true;
   }
 
@@ -353,9 +450,6 @@ class _MenuSection extends StatelessWidget {
       'Lihat Kelas Anda' => const ClassRecapListPage(),
       'Riwayat Kehadiran' => const AttendanceHistoryPage(),
       'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
-      'Profil Alumni' => const AlumniProfilePage(),
-      'Event Alumni' => const AlumniEventPage(),
-      'Lowongan Kerja' => const JobVacancyPage(),
       _ => const SelectClassDatePage(mode: PresensiEntryMode.manual),
     };
 
@@ -373,20 +467,22 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
+      highlightColor: item.backgroundColor.withValues(alpha: 0.3),
+      splashColor: item.backgroundColor.withValues(alpha: 0.5),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
-            width: 78,
-            height: 78,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
               color: item.backgroundColor,
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(item.icon, color: item.iconColor, size: 40),
+            child: Icon(item.icon, color: item.iconColor, size: 32),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Expanded(
             child: Text(
               item.label,
@@ -394,7 +490,7 @@ class _MenuTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12,
                 height: 1.2,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -408,49 +504,73 @@ class _MenuTile extends StatelessWidget {
 }
 
 class _MainBottomNavigation extends StatelessWidget {
+  final bool isAlumni;
   final int selectedIndex;
   final ValueChanged<int> onTap;
 
   const _MainBottomNavigation({
+    required this.isAlumni,
     required this.selectedIndex,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Navigasi Bawah Khusus Alumni HANYA 3 MENU (Home, Event, Profil)
+    final List<BottomNavigationBarItem> navItems = isAlumni
+        ? const [
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_outlined)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home)),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.event_note_outlined)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.event_note)),
+              label: 'Event',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)),
+              label: 'Profil',
+            ),
+          ]
+        : const [
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home_outlined)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.home)),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.class_outlined)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.class_)),
+              label: 'Ruang Kelas',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person_outline)),
+              activeIcon: Padding(padding: EdgeInsets.only(bottom: 4), child: Icon(Icons.person)),
+              label: 'Profil',
+            ),
+          ];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
       ),
       child: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: onTap,
         backgroundColor: Colors.white,
-        selectedItemColor: _HomePageState.primaryBlue,
-        unselectedItemColor: Colors.black45,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800),
+        elevation: 0,
+        selectedItemColor: const Color(0xFF1E88E5), // primaryBlue
+        unselectedItemColor: Colors.grey.shade500,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 11),
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.class_rounded),
-            label: 'Ruang Kelas',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
+        items: navItems,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'data/alumni_event_service.dart';
 import '../../core/config/api_config.dart';
+
 class AlumniEventDetailPage extends StatelessWidget {
   final AlumniEvent event;
 
@@ -12,17 +13,27 @@ class AlumniEventDetailPage extends StatelessWidget {
     final statusInfo = _getStatusInfo(event.status);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white, // Latar belakang putih bersih (flat design)
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
-        title: const Text('Detail Event'),
+        centerTitle: true,
+        title: const Text(
+          'Detail Event',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.grey.shade200, height: 1), // Garis pemisah flat
+        ),
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // --- Gambar Banner ---
             if (event.bannerImage != null && event.bannerImage!.isNotEmpty)
               Image.network(
                 event.bannerImage!.startsWith('http')
@@ -31,100 +42,132 @@ class AlumniEventDetailPage extends StatelessWidget {
                 width: double.infinity,
                 height: 250,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: double.infinity,
+                  height: 250,
+                  color: Colors.grey.shade100,
+                  child: Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey.shade400),
+                ),
               ),
+            
+            // --- Konten Utama ---
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  // Badges (Status & Approval)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: statusInfo.bgColor,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(8), // Sudut membulat modern
                         ),
                         child: Text(
                           statusInfo.label,
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: statusInfo.color,
                           ),
                         ),
                       ),
-                      if (event.approvalStatus == 'pending') ...[
-                        const SizedBox(width: 8),
+                      if (event.approvalStatus == 'pending')
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.orange.shade200),
                           ),
-                          child: Text(
-                            'Menunggu Persetujuan',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.orange.shade700,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.hourglass_bottom_rounded, size: 14, color: Colors.orange.shade700),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Menunggu Persetujuan',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.orange.shade700,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 16),
+                  
+                  // Judul Event
                   Text(
                     event.title,
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A),
+                      height: 1.3,
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 24),
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+                  const SizedBox(height: 24),
+
+                  // Detail Items
                   _buildDetailItem(
                     icon: Icons.calendar_today_outlined,
                     title: 'Tanggal & Waktu',
                     content: _formatDateRange(event.startDate, event.endDate),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   _buildDetailItem(
                     icon: Icons.location_on_outlined,
                     title: 'Lokasi',
                     content: event.location,
                   ),
                   if (event.organizer != null && event.organizer!.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     _buildDetailItem(
                       icon: Icons.person_outline,
                       title: 'Penyelenggara / Pengaju',
                       content: event.organizer!,
                     ),
                   ],
+                  
+                  const SizedBox(height: 32),
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
                   const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Deskripsi Event',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+
+                  // Deskripsi
+                  Row(
+                    children: [
+                      const Icon(Icons.description_outlined, size: 22, color: Color(0xFF1E88E5)),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Deskripsi Event',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Html(
                     data: event.description,
                     style: {
                       "body": Style(
                         margin: Margins.zero,
                         padding: HtmlPaddings.zero,
-                        fontSize: FontSize(14.0),
-                        color: Colors.black87,
+                        fontSize: FontSize(14.5),
+                        color: Colors.grey.shade800,
                         lineHeight: const LineHeight(1.6),
                       ),
                     },
@@ -139,17 +182,19 @@ class AlumniEventDetailPage extends StatelessWidget {
     );
   }
 
+  // --- UI HELPER WIDGET ---
   Widget _buildDetailItem({required IconData icon, required String title, required String content}) {
+    const primaryColor = Color(0xFF1E88E5);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
+            color: primaryColor.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFF4A90D9), size: 20),
+          child: Icon(icon, color: primaryColor, size: 22),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -158,9 +203,9 @@ class AlumniEventDetailPage extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: Colors.black54,
+                  color: Colors.grey.shade600,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -170,7 +215,8 @@ class AlumniEventDetailPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   color: Colors.black87,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -180,6 +226,7 @@ class AlumniEventDetailPage extends StatelessWidget {
     );
   }
 
+  // --- LOGIC HELPER ---
   String _formatDateRange(DateTime start, DateTime? end) {
     final months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
@@ -193,30 +240,30 @@ class AlumniEventDetailPage extends StatelessWidget {
 
   _StatusInfo _getStatusInfo(String status) {
     return switch (status.toLowerCase()) {
-      'upcoming' => _StatusInfo(
+      'upcoming' => const _StatusInfo(
           label: 'Akan Datang',
-          color: const Color(0xFF4A90D9),
-          bgColor: const Color(0xFFE3EEFF),
+          color: Color(0xFF1E88E5), // Disesuaikan dengan warna utama
+          bgColor: Color(0xFFE3F2FD),
         ),
-      'ongoing' => _StatusInfo(
+      'ongoing' => const _StatusInfo(
           label: 'Berlangsung',
-          color: const Color(0xFF2E9E5B),
-          bgColor: const Color(0xFFD9F2E4),
+          color: Color(0xFF43A047),
+          bgColor: Color(0xFFE8F5E9),
         ),
       'done' || 'completed' => _StatusInfo(
           label: 'Selesai',
-          color: const Color(0xFF9E9E9E),
-          bgColor: const Color(0xFFF0F0F0),
+          color: Colors.grey.shade600,
+          bgColor: Colors.grey.shade100,
         ),
-      'cancelled' => _StatusInfo(
+      'cancelled' => const _StatusInfo(
           label: 'Dibatalkan',
-          color: const Color(0xFFE57373),
-          bgColor: const Color(0xFFFFEBEB),
+          color: Color(0xFFE53935),
+          bgColor: Color(0xFFFFEBEE),
         ),
       _ => _StatusInfo(
           label: status,
-          color: const Color(0xFFE0983C),
-          bgColor: const Color(0xFFFCEBD3),
+          color: Color(0xFFF57C00),
+          bgColor: Color(0xFFFFF3E0),
         ),
     };
   }

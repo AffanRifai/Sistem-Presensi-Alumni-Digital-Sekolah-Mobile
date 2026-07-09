@@ -153,52 +153,107 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final inputDecoration = InputDecoration(
+  // --- UI HELPER WIDGETS ---
+  InputDecoration _buildInputDecoration({required String label, required String hint, required IconData icon}) {
+    const primaryColor = Color(0xFF1E88E5);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+      prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.7)),
       filled: true,
       fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+      ),
     );
+  }
+  // -------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF1E88E5);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.white, // Background flat putih
       appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit Event' : 'Ajukan Event'),
+        title: Text(
+          _isEditMode ? 'Edit Event' : 'Ajukan Event', 
+          style: const TextStyle(fontWeight: FontWeight.w600)
+        ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
+        centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Banner Image Picker
+                    // --- Header Text ---
+                    Text(
+                      _isEditMode ? 'Perbarui Informasi' : 'Informasi Event',
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isEditMode
+                          ? 'Silakan ubah detail event di bawah ini sesuai kebutuhan.'
+                          : 'Lengkapi formulir berikut. Event yang Anda ajukan akan direview oleh Admin sebelum dipublikasikan.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+                    const SizedBox(height: 24),
+
+                    // --- Banner Image Picker ---
+                    Text(
+                      'Banner / Poster Event',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey.shade800),
+                    ),
+                    const SizedBox(height: 12),
                     GestureDetector(
                       onTap: _pickImage,
                       child: Container(
                         height: 200,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade300, width: 1.5),
                           image: _selectedImage != null
                               ? DecorationImage(
                                   image: FileImage(_selectedImage!),
@@ -220,11 +275,23 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                             ? Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add_photo_alternate_outlined, size: 48, color: Colors.grey.shade400),
-                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor.withOpacity(0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.add_photo_alternate_outlined, size: 36, color: primaryColor.withOpacity(0.8)),
+                                  ),
+                                  const SizedBox(height: 12),
                                   Text(
                                     'Pilih Banner (Opsional)',
-                                    style: TextStyle(color: Colors.grey.shade600),
+                                    style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Format: JPG, PNG (Rekomendasi 16:9)',
+                                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
                                   ),
                                 ],
                               )
@@ -233,63 +300,65 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Title
+                    // --- Form Inputs ---
                     TextFormField(
                       controller: _titleController,
-                      decoration: inputDecoration.copyWith(
-                        labelText: 'Judul Event',
-                        hintText: 'Masukkan judul event',
+                      textInputAction: TextInputAction.next,
+                      decoration: _buildInputDecoration(
+                        label: 'Judul Event',
+                        hint: 'Contoh: Reuni Akbar Angkatan 2020',
+                        icon: Icons.event_note_outlined,
                       ),
                       validator: (v) => v == null || v.isEmpty ? 'Judul tidak boleh kosong' : null,
                     ),
                     const SizedBox(height: 16),
 
-                    // Location
                     TextFormField(
                       controller: _locationController,
-                      decoration: inputDecoration.copyWith(
-                        labelText: 'Lokasi',
-                        hintText: 'Contoh: Aula Utama, atau Link Zoom',
+                      textInputAction: TextInputAction.next,
+                      decoration: _buildInputDecoration(
+                        label: 'Lokasi',
+                        hint: 'Contoh: Aula Utama, atau Link Zoom',
+                        icon: Icons.location_on_outlined,
                       ),
                       validator: (v) => v == null || v.isEmpty ? 'Lokasi tidak boleh kosong' : null,
                     ),
                     const SizedBox(height: 16),
 
-                    // Date & Time row
+                    // --- Date & Time Row (DIPERBAIKI AGAR SEIMBANG) ---
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: InkWell(
-                            onTap: _pickDate,
-                            borderRadius: BorderRadius.circular(12),
-                            child: InputDecorator(
-                              decoration: inputDecoration.copyWith(labelText: 'Tanggal'),
-                              child: Text(
-                                _selectedDate != null
-                                    ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
-                                    : 'Pilih Tanggal',
-                                style: TextStyle(
-                                  color: _selectedDate != null ? Colors.black87 : Colors.grey.shade600,
-                                ),
-                              ),
+                          child: TextFormField(
+                            readOnly: true, // Tidak bisa diketik manual
+                            onTap: _pickDate, // Klik untuk membuka kalender
+                            controller: TextEditingController(
+                              text: _selectedDate != null
+                                  ? '${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}'
+                                  : '',
+                            ),
+                            decoration: _buildInputDecoration(
+                              label: 'Tanggal',
+                              hint: 'Pilih Tanggal',
+                              icon: Icons.calendar_today_outlined,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
-                          child: InkWell(
-                            onTap: _pickTime,
-                            borderRadius: BorderRadius.circular(12),
-                            child: InputDecorator(
-                              decoration: inputDecoration.copyWith(labelText: 'Waktu'),
-                              child: Text(
-                                _selectedTime != null
-                                    ? _selectedTime!.format(context)
-                                    : 'Pilih Waktu',
-                                style: TextStyle(
-                                  color: _selectedTime != null ? Colors.black87 : Colors.grey.shade600,
-                                ),
-                              ),
+                          child: TextFormField(
+                            readOnly: true, // Tidak bisa diketik manual
+                            onTap: _pickTime, // Klik untuk membuka jam
+                            controller: TextEditingController(
+                              text: _selectedTime != null
+                                  ? _selectedTime!.format(context)
+                                  : '',
+                            ),
+                            decoration: _buildInputDecoration(
+                              label: 'Waktu',
+                              hint: 'Pilih Waktu',
+                              icon: Icons.access_time_outlined,
                             ),
                           ),
                         ),
@@ -297,33 +366,35 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Description
                     TextFormField(
                       controller: _descriptionController,
-                      decoration: inputDecoration.copyWith(
-                        labelText: 'Deskripsi Event',
-                        hintText: 'Ceritakan detail event ini',
-                        alignLabelWithHint: true,
-                      ),
+                      textInputAction: TextInputAction.done,
                       maxLines: 5,
+                      decoration: _buildInputDecoration(
+                        label: 'Deskripsi Event',
+                        hint: 'Ceritakan detail rangkaian acara, pembicara, atau info penting lainnya...',
+                        icon: Icons.description_outlined,
+                      ).copyWith(alignLabelWithHint: true),
                       validator: (v) => v == null || v.isEmpty ? 'Deskripsi tidak boleh kosong' : null,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 40),
 
-                    // Submit button
+                    // --- Submit Button ---
                     ElevatedButton(
                       onPressed: _submit,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         elevation: 0,
                       ),
                       child: Text(
                         _isEditMode ? 'Simpan Perubahan' : 'Ajukan Event',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
