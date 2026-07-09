@@ -29,35 +29,40 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF1E88E5);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        title: const Text(
-          'Lowongan Kerja',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-      ),
+      backgroundColor: Colors.white, // Background flat putih
+      // Menghapus AppBar agar judul menyatu dengan konten yang bisa discroll
       body: FutureBuilder<List<JobVacancy>>(
         future: _jobsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: primaryColor));
           }
           if (snapshot.hasError) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
+                    child: const Icon(Icons.error_outline, size: 48, color: Color(0xFFE57373)),
+                  ),
                   const SizedBox(height: 16),
-                  Text('Gagal memuat lowongan: ${snapshot.error}', textAlign: TextAlign.center),
+                  Text('Gagal memuat lowongan\n${snapshot.error}', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
                   const SizedBox(height: 16),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: _loadJobs,
-                    child: const Text('Coba Lagi'),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ],
               ),
@@ -71,11 +76,20 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.work_off_outlined, size: 80, color: Colors.grey.shade300),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
+                    child: Icon(Icons.work_off_outlined, size: 64, color: Colors.grey.shade400),
+                  ),
                   const SizedBox(height: 16),
+                  const Text(
+                    'Belum Ada Lowongan',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+                  ),
+                  const SizedBox(height: 8),
                   Text(
-                    'Belum ada lowongan kerja.',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                    'Saat ini belum ada lowongan kerja yang tersedia.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                   ),
                 ],
               ),
@@ -83,12 +97,53 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
           }
 
           return RefreshIndicator(
+            color: primaryColor,
             onRefresh: () async => _loadJobs(),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: jobs.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) => _JobCard(job: jobs[index]),
+            // Menggunakan CustomScrollView agar Header dan List bisa discroll bersamaan
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Lowongan Kerja',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1A1A1A),
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Temukan peluang karir dan pekerjaan terbaik untukmu.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _JobCard(job: jobs[index]),
+                        );
+                      },
+                      childCount: jobs.length,
+                    ),
+                  ),
+                ),
+                // Padding ekstra di bawah agar tidak tertutup Bottom Navigation Bar
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
+              ],
             ),
           );
         },
@@ -109,19 +164,13 @@ class _JobCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200, width: 1.2), // Layout flat dengan border
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: () {
             _showJobDetail(context);
           },
@@ -135,16 +184,16 @@ class _JobCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 54,
+                      height: 54,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
                       child: job.companyLogo != null && job.companyLogo!.isNotEmpty
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(14),
                               child: Image.network(
                                 job.companyLogo!.startsWith('http')
                                     ? job.companyLogo!
@@ -155,7 +204,7 @@ class _JobCard extends StatelessWidget {
                             )
                           : Icon(Icons.business, color: Colors.grey.shade400),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,8 +213,9 @@ class _JobCard extends StatelessWidget {
                             job.title,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
                               color: Colors.black87,
+                              letterSpacing: -0.3,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -173,10 +223,10 @@ class _JobCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             job.companyName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.blue.shade700,
-                              fontWeight: FontWeight.w500,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF1E88E5),
+                              fontWeight: FontWeight.w600,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -207,7 +257,7 @@ class _JobCard extends StatelessWidget {
                 ),
                 
                 const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
+                  padding: EdgeInsets.symmetric(vertical: 14),
                   child: Divider(height: 1),
                 ),
                 
@@ -220,30 +270,30 @@ class _JobCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
-                              const SizedBox(width: 4),
+                              Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade500),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   job.location,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Icon(Icons.monetization_on_outlined, size: 14, color: Colors.green.shade600),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   job.formattedSalary,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -256,22 +306,24 @@ class _JobCard extends StatelessWidget {
                     ),
                     if (job.deadline != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade100),
                         ),
                         child: Column(
                           children: [
                             Text(
                               'Batas Akhir',
-                              style: TextStyle(fontSize: 10, color: Colors.red.shade700),
+                              style: TextStyle(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.w500),
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               DateFormat('dd MMM yyyy').format(job.deadline!),
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.red.shade700,
                               ),
                             ),
@@ -301,7 +353,7 @@ class _JobCard extends StatelessWidget {
         builder: (_, controller) => Container(
           decoration: const BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             children: [
@@ -317,6 +369,7 @@ class _JobCard extends StatelessWidget {
               Expanded(
                 child: ListView(
                   controller: controller,
+                  physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.all(24),
                   children: [
                     // Header Detail
@@ -325,13 +378,13 @@ class _JobCard extends StatelessWidget {
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade200),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.shade200, width: 1.5),
                         ),
                         child: job.companyLogo != null && job.companyLogo!.isNotEmpty
                             ? ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(18),
                                 child: Image.network(
                                   job.companyLogo!.startsWith('http')
                                       ? job.companyLogo!
@@ -343,61 +396,63 @@ class _JobCard extends StatelessWidget {
                             : Icon(Icons.business, color: Colors.grey.shade400, size: 40),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Text(
                       job.title,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: Colors.black87),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       job.companyName,
-                      style: TextStyle(fontSize: 16, color: Colors.blue.shade700, fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontSize: 16, color: Color(0xFF1E88E5), fontWeight: FontWeight.w600),
                       textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                     
                     // Quick Info Grid
                     Row(
                       children: [
-                        Expanded(child: _InfoBox(icon: Icons.location_on, label: 'Lokasi', value: job.location, color: Colors.blue)),
+                        Expanded(child: _InfoBox(icon: Icons.location_on_outlined, label: 'Lokasi', value: job.location, color: Colors.blue)),
                         const SizedBox(width: 12),
-                        Expanded(child: _InfoBox(icon: Icons.monetization_on, label: 'Gaji', value: job.formattedSalary, color: Colors.green)),
+                        Expanded(child: _InfoBox(icon: Icons.monetization_on_outlined, label: 'Gaji', value: job.formattedSalary, color: Colors.green)),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Expanded(child: _InfoBox(icon: Icons.work, label: 'Tipe', value: _formatJobType(job.jobType), color: Colors.orange)),
+                        Expanded(child: _InfoBox(icon: Icons.work_outline, label: 'Tipe', value: _formatJobType(job.jobType), color: Colors.orange)),
                         const SizedBox(width: 12),
-                        Expanded(child: _InfoBox(icon: Icons.calendar_today, label: 'Batas', value: job.deadline != null ? DateFormat('dd MMM yyyy').format(job.deadline!) : 'Tidak ada', color: Colors.red)),
+                        Expanded(child: _InfoBox(icon: Icons.calendar_today_outlined, label: 'Batas Akhir', value: job.deadline != null ? DateFormat('dd MMM yyyy').format(job.deadline!) : 'Tidak ada', color: Colors.red)),
                       ],
                     ),
                     
                     const SizedBox(height: 32),
                     
-                    const Text('Deskripsi Pekerjaan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    const Text('Deskripsi Pekerjaan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                    const SizedBox(height: 12),
                     Text(
                       job.description.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
-                      style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.6),
+                      style: TextStyle(fontSize: 14.5, color: Colors.grey.shade800, height: 1.6),
                     ),
                     
                     const SizedBox(height: 24),
+                    const Divider(height: 1),
+                    const SizedBox(height: 24),
                     
                     if (job.requirements != null && job.requirements!.isNotEmpty) ...[
-                      const Text('Persyaratan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
+                      const Text('Persyaratan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      const SizedBox(height: 12),
                       Text(
                         job.requirements!.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.6),
+                        style: TextStyle(fontSize: 14.5, color: Colors.grey.shade800, height: 1.6),
                       ),
                       const SizedBox(height: 32),
                     ],
                     
                     if (job.link != null && job.link!.isNotEmpty) ...[
-                      const Text('Tautan Eksternal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
+                      const Text('Tautan Eksternal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      const SizedBox(height: 12),
                       InkWell(
                         onTap: () async {
                           String linkString = job.link!;
@@ -414,11 +469,12 @@ class _JobCard extends StatelessWidget {
                             }
                           }
                         },
+                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: Colors.blue.shade100),
                           ),
                           child: Row(
@@ -431,13 +487,13 @@ class _JobCard extends StatelessWidget {
                                   style: TextStyle(
                                     color: Colors.blue.shade700,
                                     decoration: TextDecoration.underline,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              Icon(Icons.open_in_new, size: 16, color: Colors.blue.shade700),
+                              Icon(Icons.open_in_new, size: 18, color: Colors.blue.shade700),
                             ],
                           ),
                         ),
@@ -498,10 +554,10 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
@@ -511,7 +567,7 @@ class _Badge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
           ),
         ],
       ),
@@ -530,22 +586,22 @@ class _InfoBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.shade50,
-        borderRadius: BorderRadius.circular(12),
+        color: color.shade50.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.shade100),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: color.shade700),
-          const SizedBox(height: 8),
-          Text(label, style: TextStyle(fontSize: 11, color: color.shade700)),
-          const SizedBox(height: 2),
+          Icon(icon, size: 24, color: color.shade600),
+          const SizedBox(height: 12),
+          Text(label, style: TextStyle(fontSize: 12, color: color.shade700, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black87),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),

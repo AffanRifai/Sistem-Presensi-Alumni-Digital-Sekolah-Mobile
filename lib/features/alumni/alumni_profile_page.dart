@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'data/alumni_service.dart';
 import 'alumni_profile_edit_page.dart';
 
+import '../auth/data/auth_service.dart'; 
+import '../auth/login_page.dart'; 
+
 class AlumniProfilePage extends StatefulWidget {
   const AlumniProfilePage({super.key});
 
@@ -20,21 +23,67 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
     _profileFuture = _service.fetchProfile();
   }
 
+  // --- FUNGSI LOGOUT ---
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal', style: TextStyle(color: Colors.black54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade50,
+              foregroundColor: Colors.red.shade700,
+              elevation: 0,
+            ),
+            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        await AuthService().logout();
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false,
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal logout: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF4A90D9);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white, // Latar belakang flat dan bersih
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4A90D9),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
         title: const Text(
           'Profil Alumni',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         elevation: 0,
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(Icons.edit_outlined, color: primaryColor),
+            tooltip: 'Edit Profil',
             onPressed: () async {
               if (snapshotData == null) return;
               final result = await Navigator.push(
@@ -51,6 +100,12 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
               }
             },
           ),
+          // Icon Logout di AppBar (Opsional, tapi bagus untuk akses cepat)
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            tooltip: 'Keluar',
+            onPressed: _handleLogout,
+          ),
         ],
       ),
       body: FutureBuilder<AlumniProfile>(
@@ -58,7 +113,7 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF4A90D9)),
+              child: CircularProgressIndicator(color: primaryColor),
             );
           }
 
@@ -73,7 +128,11 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
 
           final profile = snapshot.data!;
           snapshotData = profile;
-          return _ProfileContent(profile: profile);
+          
+          return _ProfileContent(
+            profile: profile,
+            onLogoutTap: _handleLogout, // Mengirimkan fungsi logout ke ProfileContent
+          );
         },
       ),
     );
@@ -123,6 +182,7 @@ class _ErrorView extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 0,
               ),
             ),
           ],
@@ -135,23 +195,29 @@ class _ErrorView extends StatelessWidget {
 // ─── Profile Content ──────────────────────────────────────────────────────────
 class _ProfileContent extends StatelessWidget {
   final AlumniProfile profile;
+  final VoidCallback onLogoutTap;
 
-  const _ProfileContent({required this.profile});
+  const _ProfileContent({required this.profile, required this.onLogoutTap});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Header kartu avatar + nama ──
+          // ── Header Avatar + Nama (Desain Baru) ──
           _buildHeader(),
-          const SizedBox(height: 16),
+          
+          const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+          const SizedBox(height: 24),
+
           // ── Biodata ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                _buildCard(
+                _buildSection(
                   title: 'Informasi Akun',
                   icon: Icons.account_circle_outlined,
                   children: [
@@ -177,8 +243,8 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _buildCard(
+                
+                _buildSection(
                   title: 'Informasi Sekolah',
                   icon: Icons.school_outlined,
                   children: [
@@ -194,9 +260,9 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (profile.currentStatus != null) ...[
-                  const SizedBox(height: 12),
-                  _buildCard(
+                
+                if (profile.currentStatus != null)
+                  _buildSection(
                     title: 'Status Saat Ini',
                     icon: Icons.work_outline,
                     children: [
@@ -226,9 +292,8 @@ class _ProfileContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
-                const SizedBox(height: 12),
-                _buildCard(
+                
+                _buildSection(
                   title: 'Kontak & Lokasi',
                   icon: Icons.location_on_outlined,
                   children: [
@@ -251,9 +316,9 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _buildCard(
-                  title: 'Status',
+                
+                _buildSection(
+                  title: 'Status Keanggotaan',
                   icon: Icons.verified_outlined,
                   children: [
                     _InfoRow(
@@ -268,7 +333,33 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+
+                const SizedBox(height: 16),
+                
+                // ── Tombol Logout Besar di Bawah ──
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onLogoutTap,
+                    icon: const Icon(Icons.logout_rounded, color: Colors.red),
+                    label: const Text(
+                      'Keluar Akun',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      side: BorderSide(color: Colors.red.shade300, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -277,57 +368,55 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
+  // --- Desain Header Baru Tanpa Gradient ---
   Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 40),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF4A90D9), Color(0xFFBFE0F5)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-      ),
+    const primaryColor = Color(0xFF4A90D9);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
       child: Column(
         children: [
-          CircleAvatar(
-            radius: 44,
-            backgroundColor: Colors.white,
-            child: Text(
-              profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
-              style: const TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4A90D9),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: primaryColor.withOpacity(0.2), width: 2),
+            ),
+            child: CircleAvatar(
+              radius: 46,
+              backgroundColor: primaryColor.withOpacity(0.1),
+              child: Text(
+                profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: primaryColor,
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
             profile.name,
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: primaryColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               _formatRole(profile.role),
               style: const TextStyle(
-                color: Colors.white,
+                color: primaryColor,
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -336,48 +425,37 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCard({
+  // --- Layout Flat Pengganti _buildCard ---
+  Widget _buildSection({
     required String title,
     required IconData icon,
     required List<Widget> children,
   }) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: const Color(0xFF4A90D9)),
-                const SizedBox(width: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF4A90D9),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 24, color: const Color(0xFF4A90D9)),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const Divider(height: 1),
-          ...children,
-        ],
-      ),
+        ),
+        ...children,
+        const SizedBox(height: 16),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -423,27 +501,28 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12), // Menghapus padding horizontal agar rata kiri
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: Colors.black38),
-          const SizedBox(width: 12),
+          Icon(icon, size: 20, color: Colors.grey.shade500),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   label,
-                  style: const TextStyle(fontSize: 12, color: Colors.black45),
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                     color: Colors.black87,
+                    height: 1.4,
                   ),
                 ),
               ],

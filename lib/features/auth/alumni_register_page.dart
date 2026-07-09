@@ -268,7 +268,7 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Buat Akun Baru',
+                  'Pendaftaran Alumni',
                   style: TextStyle(
                     fontSize: 32, 
                     fontWeight: FontWeight.w800, 
