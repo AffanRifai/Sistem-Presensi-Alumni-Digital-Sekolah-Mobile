@@ -88,10 +88,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _goBackToWelcome() {
-    Navigator.pushAndRemoveUntil(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const WelcomePage()),
-      (route) => false,
     );
   }
 

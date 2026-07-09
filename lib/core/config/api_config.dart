@@ -11,10 +11,10 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      return 'http://192.168.1.19:8000/api/v1';
+      return 'http://192.168.100.13:8000/api/v1';
     }
 
-    return 'http://192.168.1.19:8000/api/v1';
+    return 'http://192.168.100.13:8000/api/v1';
   }
 
   static String get storageUrl {
