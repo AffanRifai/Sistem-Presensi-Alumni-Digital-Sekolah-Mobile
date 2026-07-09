@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/api_config.dart';
@@ -277,6 +278,26 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    final token = await readToken();
+    if (token != null && token.isNotEmpty) {
+      try {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        await _client.post(
+          Uri.parse('${ApiConfig.baseUrl}/logout'),
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            if (fcmToken != null) 'fcm_token': fcmToken,
+          }),
+        ).timeout(const Duration(seconds: 5));
+      } catch (e) {
+        // Silently ignore network errors during logout to ensure local storage gets cleared
+      }
+    }
+    
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _tokenTypeKey);
     await _storage.delete(key: _userKey);
