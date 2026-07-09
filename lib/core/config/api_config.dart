@@ -11,10 +11,10 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      return 'https://onion-vacuum-text-ann.trycloudflare.com/api/v1';
+      return 'http://192.168.100.13:8000/api/v1';
     }
 
-    return 'https://onion-vacuum-text-ann.trycloudflare.com/api/v1';
+    return 'http://192.168.100.13:8000/api/v1';
   }
 
   static String get storageUrl {

@@ -339,7 +339,6 @@ class _ParentHomePageState extends State<ParentHomePage> {
               ),
               child: Row(
                 children: [
-                  // HAPUS: IconButton panah kembali di sini
                   const CircleAvatar(
                     radius: 24,
                     backgroundColor: Colors.white,
@@ -429,11 +428,19 @@ class _HistoryContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF3E87D8),
+        ),
+      );
     }
 
     if (errorMessage != null) {
-      return _MessageState(message: errorMessage!, onRetry: onRetry);
+      return _ErrorState(
+        message: errorMessage!,
+        onRetry: onRetry,
+        onBack: onBack,
+      );
     }
 
     final data = summary;
@@ -477,7 +484,8 @@ class _HistoryContent extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+// ==================== ENHANCED EMPTY STATE ====================
+class _EmptyState extends StatefulWidget {
   final String message;
   final VoidCallback onRetry;
   final VoidCallback onBack;
@@ -488,145 +496,417 @@ class _EmptyState extends StatelessWidget {
     required this.onBack,
   });
 
-  static const Color primaryBlue = Color(0xFF3E87D8);
+  @override
+  State<_EmptyState> createState() => _EmptyStateState();
+}
+
+class _EmptyStateState extends State<_EmptyState>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.search_off,
-              size: 72,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Silakan coba bulan lain atau periksa kembali data Anda.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              runSpacing: 12,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton.icon(
-                    onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back, size: 18),
-                    label: const Text('Reset ke Bulan Ini'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.black54,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                // Icon Container dengan Shadow
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF3E87D8).withOpacity(0.1),
+                        blurRadius: 30,
+                        offset: const Offset(0, 10),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.inbox_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Judul dengan gradient text
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.grey.shade800, Colors.grey.shade600],
+                  ).createShader(bounds),
+                  child: Text(
+                    'Tidak Ada Data',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade800,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: 160,
-                  child: ElevatedButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh, size: 18),
-                    label: const Text('Coba Lagi'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                const SizedBox(height: 12),
+
+                // Pesan utama
+                Text(
+                  widget.message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Subtitle dalam pill container
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3E87D8).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFF3E87D8).withOpacity(0.15),
                     ),
                   ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: const Color(0xFF3E87D8).withOpacity(0.7),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Coba periksa bulan lainnya atau muat ulang halaman',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: const Color(0xFF3E87D8).withOpacity(0.8),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 36),
+
+                // Tombol aksi
+                Column(
+                  children: [
+                    // Primary button - full width
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: widget.onRetry,
+                        icon: const Icon(Icons.refresh, size: 20),
+                        label: const Text(
+                          'Muat Ulang Data',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3E87D8),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 2,
+                          shadowColor:
+                              const Color(0xFF3E87D8).withOpacity(0.3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Secondary button - full width
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton.icon(
+                        onPressed: widget.onBack,
+                        icon: Icon(
+                          Icons.calendar_today,
+                          size: 18,
+                          color: Colors.grey.shade600,
+                        ),
+                        label: Text(
+                          'Kembali ke Bulan Ini',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            side: BorderSide(
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _MessageState extends StatelessWidget {
+// ==================== ENHANCED ERROR STATE ====================
+class _ErrorState extends StatefulWidget {
   final String message;
   final VoidCallback onRetry;
+  final VoidCallback onBack;
 
-  const _MessageState({required this.message, required this.onRetry});
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+    required this.onBack,
+  });
+
+  @override
+  State<_ErrorState> createState() => _ErrorStateState();
+}
+
+class _ErrorStateState extends State<_ErrorState>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey.shade400,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54, fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 200,
-              child: ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Coba Lagi'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3E87D8),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Error icon dengan background circle
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.red.shade50,
+                      Colors.orange.shade50,
+                    ],
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.red.shade100,
+                    width: 1.5,
                   ),
                 ),
+                child: Icon(
+                  Icons.wifi_off_rounded,
+                  size: 56,
+                  color: Colors.red.shade300,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 28),
+
+              // Judul error
+              Text(
+                'Gagal Memuat Data',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade800,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Pesan error
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.red.shade100,
+                  ),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 20,
+                      color: Colors.red.shade400,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.message,
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 36),
+
+              // Tombol aksi
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: widget.onRetry,
+                      icon: const Icon(Icons.refresh, size: 20),
+                      label: const Text(
+                        'Coba Lagi',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3E87D8),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 2,
+                        shadowColor:
+                            const Color(0xFF3E87D8).withOpacity(0.3),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton.icon(
+                      onPressed: widget.onBack,
+                      icon: Icon(
+                        Icons.arrow_back,
+                        size: 18,
+                        color: Colors.grey.shade600,
+                      ),
+                      label: Text(
+                        'Kembali',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
+// ==================== EXISTING WIDGETS (UNCHANGED) ====================
 class _ProfileCard extends StatelessWidget {
   final StudentAttendanceProfile profile;
 

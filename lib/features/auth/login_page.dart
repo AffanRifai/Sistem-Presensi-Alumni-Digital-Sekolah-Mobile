@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-
 import '/features/home/home_page.dart';
-import '../orangtua/parent_home_page.dart';
-import 'alumni_register_page.dart';
-import 'data/auth_service.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
+
+import 'data/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,9 +40,29 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _authService.login(email: email, password: password);
+
       if (!mounted) return;
 
-      await _routeAfterLogin(result);
+      if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'pending') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PendingVerificationPage(),
+          ),
+          (route) => false,
+        );
+      } else if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'rejected') {
+        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+        await _authService.logout();
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
@@ -63,17 +81,35 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _authService.loginWithGoogle();
+
       if (!mounted) return;
 
-      await _routeAfterLogin(result);
+      if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'pending') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PendingVerificationPage(),
+          ),
+          (route) => false,
+        );
+      } else if (result.user.role == 'alumni' &&
+          result.user.verificationStatus == 'rejected') {
+        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+        await _authService.logout();
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
     } on AuthException catch (error) {
       if (!mounted) return;
-      if (error.message != 'Login Google dibatalkan.') {
-        _showMessage(error.message);
-      }
+      _showMessage(error.message);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server. Periksa koneksi internet Anda.');
+      _showMessage('Tidak bisa terhubung ke server Laravel.');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -81,45 +117,10 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _routeAfterLogin(AuthResult result) async {
-    if (result.user.role == 'alumni' &&
-        result.user.verificationStatus == 'pending') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
-        (route) => false,
-      );
-    } else if (result.user.role == 'alumni' &&
-        result.user.verificationStatus == 'rejected') {
-      _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
-      await _authService.logout();
-    } else if (result.user.role == 'parent') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const ParentHomePage()),
-        (route) => false,
-      );
-    } else {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false,
-      );
-    }
-  }
-
   void _goBackToWelcome() {
-    Navigator.pushAndRemoveUntil(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const WelcomePage()),
-      (route) => false,
-    );
-  }
-
-  void _goToAlumniRegister() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AlumniRegisterPage()),
     );
   }
 
@@ -131,7 +132,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFFCFE7F5);
+    const Color backgroundColor = Color(0xFFFFFFFF);
     const Color fieldColor = Color(0xFFFFFFFF);
     const Color buttonColor = Color(0xFF3E87D8);
     const Color iconColor = Color(0xFF7A8B96);
@@ -149,7 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
                 label: const Text('Kembali'),
                 style: TextButton.styleFrom(
-                  foregroundColor: buttonColor,
+                  foregroundColor: const Color(0xFF3E87D8),
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -180,64 +181,104 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 24),
+
+                        // Kartu putih berisi input username & password
                         Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             children: [
-                              _LoginTextField(
-                                controller: _emailController,
-                                enabled: !_isLoading,
-                                hintText: 'Email',
-                                icon: Icons.email_outlined,
-                                iconColor: iconColor,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                autofillHints: const [AutofillHints.email],
-                                backgroundColor: fieldColor,
+                              // Username field
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: fieldColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      157,
+                                      160,
+                                      164,
+                                    ),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  autofillHints: const [AutofillHints.email],
+                                  enabled: !_isLoading,
+                                  decoration: InputDecoration(
+                                    hintText: 'Email',
+                                    hintStyle: TextStyle(color: iconColor),
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: iconColor,
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
+                                ),
                               ),
                               const SizedBox(height: 14),
-                              _LoginTextField(
-                                controller: _passwordController,
-                                enabled: !_isLoading,
-                                hintText: 'Password',
-                                icon: Icons.lock_outline,
-                                iconColor: iconColor,
-                                obscureText: _obscurePassword,
-                                textInputAction: TextInputAction.done,
-                                autofillHints: const [AutofillHints.password],
-                                backgroundColor: fieldColor,
-                                onSubmitted: (_) => _handleLogin(),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscurePassword
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: iconColor,
+
+                              // Password field
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: fieldColor,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: const Color.fromARGB(
+                                      255,
+                                      157,
+                                      160,
+                                      164,
+                                    ),
                                   ),
-                                  onPressed: _isLoading
-                                      ? null
-                                      : () {
-                                          setState(() {
-                                            _obscurePassword = !_obscurePassword;
-                                          });
-                                        },
+                                ),
+                                child: TextField(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  textInputAction: TextInputAction.done,
+                                  autofillHints: const [AutofillHints.password],
+                                  enabled: !_isLoading,
+                                  onSubmitted: (_) => _handleLogin(),
+                                  decoration: InputDecoration(
+                                    hintText: 'Password',
+                                    hintStyle: TextStyle(color: iconColor),
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline,
+                                      color: iconColor,
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: iconColor,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
+
                         const SizedBox(height: 22),
+
+                        // Tombol Login
                         Center(
                           child: SizedBox(
                             width: 220,
@@ -271,7 +312,9 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 14),
+
                         Row(
                           children: [
                             Expanded(
@@ -284,7 +327,7 @@ class _LoginPageState extends State<LoginPage> {
                               child: Text(
                                 'atau',
                                 style: TextStyle(
-                                  color: Colors.black45,
+                                  color: Colors.black54,
                                   fontSize: 12,
                                 ),
                               ),
@@ -296,7 +339,9 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ],
                         ),
+
                         const SizedBox(height: 14),
+
                         Center(
                           child: SizedBox(
                             width: 220,
@@ -309,7 +354,7 @@ class _LoginPageState extends State<LoginPage> {
                                 foregroundColor: Colors.black87,
                                 backgroundColor: Colors.white,
                                 side: const BorderSide(
-                                  color: Color(0xFFD9E2EC),
+                                  color: Color.fromARGB(255, 157, 161, 165),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),
@@ -322,18 +367,6 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: _isLoading ? null : _goToAlumniRegister,
-                          child: const Text(
-                            'Belum punya akun? Daftar sebagai Alumni',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: buttonColor,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -341,63 +374,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginTextField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool enabled;
-  final String hintText;
-  final IconData icon;
-  final Color iconColor;
-  final Color backgroundColor;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final TextInputAction? textInputAction;
-  final Iterable<String>? autofillHints;
-  final Widget? suffixIcon;
-  final ValueChanged<String>? onSubmitted;
-
-  const _LoginTextField({
-    required this.controller,
-    required this.enabled,
-    required this.hintText,
-    required this.icon,
-    required this.iconColor,
-    required this.backgroundColor,
-    this.obscureText = false,
-    this.keyboardType,
-    this.textInputAction,
-    this.autofillHints,
-    this.suffixIcon,
-    this.onSubmitted,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TextField(
-        controller: controller,
-        enabled: enabled,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        textInputAction: textInputAction,
-        autofillHints: autofillHints,
-        onSubmitted: onSubmitted,
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(color: iconColor),
-          prefixIcon: Icon(icon, color: iconColor),
-          suffixIcon: suffixIcon,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );

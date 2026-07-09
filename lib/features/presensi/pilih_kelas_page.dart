@@ -1,26 +1,37 @@
 import 'package:flutter/material.dart';
+
 import '../../core/network/api_exception.dart';
 import 'data/presensi_models.dart';
 import 'data/presensi_service.dart';
-import 'pilih_metode_presensi_page.dart';
+import 'data/qr_attendance_service.dart';
+import 'presensi_page.dart';
+import 'qr_attendance_page.dart';
+
+enum PresensiEntryMode { manual, qr }
 
 class SelectClassDatePage extends StatefulWidget {
-  const SelectClassDatePage({super.key});
+  final PresensiEntryMode mode;
+
+  const SelectClassDatePage({super.key, this.mode = PresensiEntryMode.manual});
 
   @override
   State<SelectClassDatePage> createState() => _SelectClassDatePageState();
 }
 
 class _SelectClassDatePageState extends State<SelectClassDatePage> {
+  static const Color primaryBlue = Color(0xFF1E88E5);
+
   final PresensiService _presensiService = PresensiService();
+  final QrAttendanceService _qrAttendanceService = QrAttendanceService();
 
   List<SchoolClassModel> _classes = const [];
   SchoolClassModel? _selectedClass;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = true;
+  bool _isOpeningQr = false;
   String? _errorMessage;
 
-  static const Color primaryBlue = Color(0xFF3E87D8);
+  bool get _isQrMode => widget.mode == PresensiEntryMode.qr;
 
   @override
   void initState() {
@@ -73,173 +84,327 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
         );
       },
     );
+
     if (picked != null) {
       setState(() => _selectedDate = picked);
     }
   }
 
-  String _formatDate(DateTime dt) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  Future<void> _handleNext() async {
+    final selectedClass = _selectedClass;
+    if (selectedClass == null) return;
+
+    if (!_isQrMode) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => StudentKehadiranPage(
+            classId: selectedClass.id,
+            className: selectedClass.displayName,
+            date: _selectedDate,
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isOpeningQr = true);
+
+    try {
+      final session = await _qrAttendanceService.openSession(
+        classId: selectedClass.id,
+        date: _selectedDate,
+      );
+      final token = await _qrAttendanceService.generateQr(session.id);
+
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QrAttendancePage(
+            sessionId: session.id,
+            className: selectedClass.displayName,
+            initialToken: token,
+          ),
+        ),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      _showMessage(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Tidak bisa membuka sesi QR.');
+    } finally {
+      if (mounted) setState(() => _isOpeningQr = false);
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    const days = [
+      'Senin',
+      'Selasa',
+      'Rabu',
+      'Kamis',
+      'Jumat',
+      'Sabtu',
+      'Minggu',
+    ];
     const months = [
       'Jan',
       'Feb',
       'Mar',
       'Apr',
-      'May',
+      'Mei',
       'Jun',
       'Jul',
-      'Aug',
+      'Agu',
       'Sep',
-      'Oct',
+      'Okt',
       'Nov',
-      'Dec',
+      'Des',
     ];
-    final day = days[dt.weekday - 1];
-    final month = months[dt.month - 1];
-    return '$day, $month ${dt.day}, ${dt.year}';
+    return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  void _handleNext() {
-    if (_selectedClass == null) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AttendanceMethodPage(
-          classId: _selectedClass!.id,
-          className: _selectedClass!.displayName,
-          date: _selectedDate,
-        ),
-      ),
-    );
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final title = _isQrMode ? 'Presensi QR' : 'Presensi Siswa';
+    final subtitle = _isQrMode
+        ? 'Pilih kelas dan tanggal untuk membuka sesi QR.'
+        : 'Pilih kelas dan tanggal untuk input presensi manual.';
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        title: const Text(
-          'Select Class and Date',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.calendar_today_outlined,
-              color: Colors.black87,
-            ),
-            onPressed: _pickDate,
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Select Class',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-
+            _Header(title: title, subtitle: subtitle),
             Expanded(
-              child: _ClassList(
-                isLoading: _isLoading,
-                errorMessage: _errorMessage,
-                classes: _classes,
-                selectedClass: _selectedClass,
-                onRetry: _loadClasses,
-                onSelected: (schoolClass) {
-                  setState(() => _selectedClass = schoolClass);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-            const Text(
-              'Select Date',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Field tanggal
-            InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F5F7),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE0E0E0)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _formatDate(_selectedDate),
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.black87,
+                    const _SectionTitle(
+                      title: 'Pilih Kelas',
+                      subtitle: 'Kelas yang tampil mengikuti akses guru.',
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: _ClassList(
+                        isLoading: _isLoading,
+                        errorMessage: _errorMessage,
+                        classes: _classes,
+                        selectedClass: _selectedClass,
+                        onRetry: _loadClasses,
+                        onSelected: (schoolClass) {
+                          setState(() => _selectedClass = schoolClass);
+                        },
                       ),
                     ),
-                    const Icon(
-                      Icons.calendar_month_outlined,
-                      color: Colors.black54,
-                      size: 20,
+                    const SizedBox(height: 14),
+                    const _SectionTitle(
+                      title: 'Tanggal Presensi',
+                      subtitle: 'Tanggal otomatis mengikuti hari ini.',
                     ),
+                    const SizedBox(height: 12),
+                    _DatePickerCard(
+                      dateText: _formatDate(_selectedDate),
+                      onTap: _pickDate,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            _selectedClass == null || _isLoading || _isOpeningQr
+                            ? null
+                            : _handleNext,
+                        icon: _isOpeningQr
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Icon(
+                                _isQrMode
+                                    ? Icons.qr_code_2_rounded
+                                    : Icons.arrow_forward_rounded,
+                              ),
+                        label: Text(_isQrMode ? 'Buka Sesi QR' : 'Lanjutkan'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryBlue,
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-            const Spacer(),
-            // Tombol Next
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton(
-                onPressed: _selectedClass == null ? null : _handleNext,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryBlue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Next',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+class _Header extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _Header({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    final offsetX = title == 'Presensi QR' ? -22.0 : -12.0;
+
+    return Transform.translate(
+      offset: Offset(offsetX, 0),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 18, 20, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _HeaderBackButton(onTap: () => Navigator.pop(context)),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.black87,
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                subtitle,
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HeaderBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.arrow_back, size: 24, color: Colors.black87),
+            SizedBox(width: 8),
+            Text(
+              'Kembali',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _SectionTitle({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 17,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(color: Colors.black54, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _DatePickerCard extends StatelessWidget {
+  final String dateText;
+  final VoidCallback onTap;
+
+  const _DatePickerCard({required this.dateText, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD9E2EC)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                dateText,
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const Icon(
+              Icons.edit_calendar_rounded,
+              color: Color.fromARGB(255, 255, 161, 20),
+            ),
           ],
         ),
       ),
@@ -248,49 +413,56 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
 }
 
 class _ClassTile extends StatelessWidget {
-  final String label;
+  final SchoolClassModel schoolClass;
   final bool selected;
   final VoidCallback onTap;
 
   const _ClassTile({
-    required this.label,
+    required this.schoolClass,
     required this.selected,
     required this.onTap,
   });
-
-  static const Color primaryBlue = Color(0xFF3E87D8);
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE8F1FC) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? primaryBlue : const Color(0xFFD9E2EC),
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: primaryBlue,
-                ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: selected ? Colors.black54 : const Color(0xFFD9E2EC),
+                width: selected ? 1.6 : 1,
               ),
-              Icon(Icons.chevron_right, color: primaryBlue),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    schoolClass.displayName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  color: selected ? Colors.green : Colors.black26,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -318,32 +490,25 @@ class _ClassList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 12),
-            TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
-          ],
+      return const Center(
+        child: CircularProgressIndicator(
+          color: _SelectClassDatePageState.primaryBlue,
         ),
       );
     }
 
+    if (errorMessage != null) {
+      return _MessageState(
+        icon: Icons.cloud_off_rounded,
+        message: errorMessage!,
+        onRetry: onRetry,
+      );
+    }
+
     if (classes.isEmpty) {
-      return const Center(
-        child: Text(
-          'Belum ada kelas.',
-          style: TextStyle(color: Colors.black54),
-        ),
+      return const _MessageState(
+        icon: Icons.class_outlined,
+        message: 'Belum ada kelas.',
       );
     }
 
@@ -352,11 +517,48 @@ class _ClassList extends StatelessWidget {
       itemBuilder: (context, index) {
         final schoolClass = classes[index];
         return _ClassTile(
-          label: schoolClass.displayName,
+          schoolClass: schoolClass,
           selected: schoolClass.id == selectedClass?.id,
           onTap: () => onSelected(schoolClass),
         );
       },
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final VoidCallback? onRetry;
+
+  const _MessageState({
+    required this.icon,
+    required this.message,
+    this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _SelectClassDatePageState.primaryBlue, size: 46),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.black54),
+            ),
+            if (onRetry != null) ...[
+              const SizedBox(height: 12),
+              TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

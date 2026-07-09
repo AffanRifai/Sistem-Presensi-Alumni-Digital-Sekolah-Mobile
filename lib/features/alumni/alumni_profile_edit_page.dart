@@ -113,54 +113,135 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
     }
   }
 
+  // --- UI HELPER WIDGETS ---
+  InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
+    const primaryColor = Color(0xFF4A90D9);
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+      prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.7)),
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: primaryColor, width: 2),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Colors.red.shade400, width: 2),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({required String title, required IconData icon}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF4A90D9), size: 24),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold, 
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  // -------------------------
+
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF4A90D9);
     final showStudyingFields = _currentStatus == 'studying' || _currentStatus == 'studying_working';
     final showWorkingFields = _currentStatus == 'working' || _currentStatus == 'studying_working';
     final showBusinessFields = _currentStatus == 'entrepreneur';
 
-    final inputDecoration = InputDecoration(
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey.shade300),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF4A90D9), width: 2),
-      ),
-    );
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white, // Layout flat dan bersih dengan latar belakang putih penuh
       appBar: AppBar(
-        title: const Text('Edit Profil'),
+        title: const Text('Profil Alumni', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
+        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Status Saat Ini',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                // --- Header Section ---
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.manage_accounts_outlined, color: primaryColor, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    const Expanded(
+                      child: Text(
+                        'Informasi Alumni',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
+                Text(
+                  'Pastikan data aktivitas dan kontak Anda selalu up-to-date agar tetap terhubung dengan sekolah dan sesama alumni.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                const Divider(height: 1, thickness: 1),
+                const SizedBox(height: 24),
+
+                // --- Section: Status & Aktivitas ---
+                _buildSectionHeader(title: 'Status & Aktivitas', icon: Icons.work_history_outlined),
+                
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _currentStatus,
-                  decoration: inputDecoration,
+                  icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
+                  decoration: _buildInputDecoration(
+                    label: 'Status Saat Ini',
+                    icon: Icons.info_outline,
+                  ),
                   items: const [
                     DropdownMenuItem(value: 'unemployed', child: Text('Belum bekerja')),
                     DropdownMenuItem(value: 'studying', child: Text('Kuliah / Pendidikan Lanjut')),
@@ -174,100 +255,121 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
                     }
                   },
                 ),
-                
+
+                // Dynamic Fields: Kuliah
                 if (showStudyingFields) ...[
-                  const SizedBox(height: 24),
-                  const Text('Pendidikan Lanjut', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _universityNameController,
-                    decoration: inputDecoration.copyWith(labelText: 'Nama Universitas / Kampus'),
+                    textInputAction: TextInputAction.next,
+                    decoration: _buildInputDecoration(label: 'Nama Universitas / Kampus', icon: Icons.account_balance_outlined),
                     validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _studyProgramController,
-                    decoration: inputDecoration.copyWith(labelText: 'Program Studi / Jurusan'),
+                    textInputAction: TextInputAction.next,
+                    decoration: _buildInputDecoration(label: 'Program Studi / Jurusan', icon: Icons.menu_book_outlined),
                     validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
                 ],
 
+                // Dynamic Fields: Bekerja
                 if (showWorkingFields) ...[
-                  const SizedBox(height: 24),
-                  const Text('Pekerjaan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _companyNameController,
-                    decoration: inputDecoration.copyWith(labelText: 'Nama Perusahaan / Instansi'),
+                    textInputAction: TextInputAction.next,
+                    decoration: _buildInputDecoration(label: 'Nama Perusahaan / Instansi', icon: Icons.business_outlined),
                     validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _jobPositionController,
-                    decoration: inputDecoration.copyWith(labelText: 'Jabatan / Posisi'),
+                    textInputAction: TextInputAction.next,
+                    decoration: _buildInputDecoration(label: 'Jabatan / Posisi', icon: Icons.badge_outlined),
                     validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
                 ],
 
+                // Dynamic Fields: Wirausaha
                 if (showBusinessFields) ...[
-                  const SizedBox(height: 24),
-                  const Text('Usaha', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _businessNameController,
-                    decoration: inputDecoration.copyWith(labelText: 'Nama Usaha / Bisnis'),
+                    textInputAction: TextInputAction.next,
+                    decoration: _buildInputDecoration(label: 'Nama Usaha / Bisnis', icon: Icons.storefront_outlined),
                     validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
                   ),
                 ],
 
+                const SizedBox(height: 32),
+                const Divider(height: 1, thickness: 1),
                 const SizedBox(height: 24),
-                const Text('Lokasi & Kontak', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                
+
+                // --- Section: Lokasi & Kontak ---
+                _buildSectionHeader(title: 'Lokasi & Kontak', icon: Icons.contact_mail_outlined),
+
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: TextFormField(
                         controller: _cityController,
-                        decoration: inputDecoration.copyWith(labelText: 'Kota/Kabupaten'),
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(label: 'Kota/Kab', icon: Icons.location_city_outlined),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _provinceController,
-                        decoration: inputDecoration.copyWith(labelText: 'Provinsi'),
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(label: 'Provinsi', icon: Icons.map_outlined),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _whatsappController,
                   keyboardType: TextInputType.phone,
-                  decoration: inputDecoration.copyWith(labelText: 'Nomor WhatsApp'),
+                  textInputAction: TextInputAction.next,
+                  decoration: _buildInputDecoration(label: 'Nomor WhatsApp', icon: Icons.phone_android_outlined),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _linkedinUrlController,
                   keyboardType: TextInputType.url,
-                  decoration: inputDecoration.copyWith(labelText: 'URL LinkedIn (Opsional)'),
+                  textInputAction: TextInputAction.done,
+                  decoration: _buildInputDecoration(label: 'URL LinkedIn (Opsional)', icon: Icons.link_outlined),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 48),
+
+                // --- Submit Button ---
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF4A90D9),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    disabledBackgroundColor: Colors.grey.shade400,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // Mengurangi sedikit lengkungan agar senada dengan layout flat
                   ),
                   child: _isLoading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Simpan Profil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                        )
+                      : const Text(
+                          'Simpan Perubahan',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                        ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
               ],
             ),
           ),

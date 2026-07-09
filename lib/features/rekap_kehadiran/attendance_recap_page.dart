@@ -22,8 +22,8 @@ class AttendanceRecapPage extends StatefulWidget {
 }
 
 class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
-  static const Color primaryBlue = Color(0xFF4A90D9);
-  static const Color lightBlue = Color(0xFFBFE0F5);
+  static const Color primaryBlue = Color(0xFF1E88E5);
+  static const Color borderColor = Color(0xFFE3E8F2);
 
   final AttendanceRecapService _attendanceRecapService =
       AttendanceRecapService();
@@ -105,10 +105,9 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'Hadir':
-        return Colors.green;
+      default:
+        return Colors.black87;
     }
-    return Colors.black54;
   }
 
   String _formatDate(DateTime date) {
@@ -219,44 +218,31 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [primaryBlue, lightBlue],
-              ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-            ),
-            child: SafeArea(
-              bottom: false,
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: const Icon(Icons.arrow_back_rounded),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Expanded(
                     child: Text(
-                      'Rekap Kehadiran',
-                      textAlign: TextAlign.center,
+                      'Data Kehadiran Siswa',
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
                       ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.refresh, color: Colors.white),
+                    icon: const Icon(Icons.refresh_rounded),
                     onPressed: _isLoading ? null : _loadRecap,
                   ),
                 ],
@@ -269,17 +255,13 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _IdentityCard(
-                    schoolName: widget.schoolName,
-                    className: widget.classData.name,
-                    teacherName: widget.classData.homeroomTeacherName,
-                  ),
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8F1FC),
-                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFFF2F5FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: borderColor),
                     ),
                     child: Row(
                       children: [
@@ -317,7 +299,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFD9E2EC)),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -328,7 +310,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                                 : _formatMonth(_selectedMonth),
                             style: const TextStyle(
                               fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
                           ),
@@ -405,54 +387,6 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _IdentityCard extends StatelessWidget {
-  final String schoolName;
-  final String className;
-  final String teacherName;
-
-  const _IdentityCard({
-    required this.schoolName,
-    required this.className,
-    required this.teacherName,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Identitas',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _InfoRow(label: 'Sekolah', value: schoolName),
-          _InfoRow(label: 'Kelas', value: className),
-          _InfoRow(label: 'Guru', value: teacherName),
         ],
       ),
     );
@@ -598,14 +532,8 @@ class _FilterTab extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: selected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
+          border: selected
+              ? Border.all(color: _AttendanceRecapPageState.primaryBlue)
               : null,
         ),
         child: Text(
@@ -614,7 +542,9 @@ class _FilterTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: selected ? const Color(0xFF3E87D8) : Colors.black54,
+            color: selected
+                ? _AttendanceRecapPageState.primaryBlue
+                : Colors.black54,
           ),
         ),
       ),
@@ -633,14 +563,8 @@ class _HarianTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _AttendanceRecapPageState.borderColor),
       ),
       child: Column(
         children: List.generate(rows.length, (index) {
@@ -743,14 +667,8 @@ class _BulananTable extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _AttendanceRecapPageState.borderColor),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -767,8 +685,8 @@ class _BulananTable extends StatelessWidget {
                 label: Text(
                   status,
                   style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
                     color: statusColor(status),
                   ),
                 ),
@@ -791,15 +709,15 @@ class _BulananTable extends StatelessWidget {
                           row['name']?.toString() ?? '-',
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                             color: Colors.black87,
                           ),
                         ),
                         Text(
                           'NIS: ${row['nis'] ?? '-'}',
                           style: const TextStyle(
-                            fontSize: 10,
+                            fontSize: 12.5,
                             color: Colors.black45,
                           ),
                         ),
@@ -812,8 +730,8 @@ class _BulananTable extends StatelessWidget {
                     Text(
                       '${row[status] ?? 0}',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                         color: statusColor(status),
                       ),
                     ),

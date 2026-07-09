@@ -15,7 +15,8 @@ class AttendanceRecapSelectClassPage extends StatefulWidget {
 
 class _AttendanceRecapSelectClassPageState
     extends State<AttendanceRecapSelectClassPage> {
-  static const Color lightBlue = Color(0xFFBFE0F5);
+  static const Color primaryBlue = Color(0xFF1E88E5);
+  static const Color borderColor = Color(0xFFE3E8F2);
 
   final ClassRecapService _classRecapService = ClassRecapService();
 
@@ -70,71 +71,56 @@ class _AttendanceRecapSelectClassPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [lightBlue, Color(0xFFEAF5FB)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Rekap Kehadiran',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87,
-                        ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Kehadiran Siswa',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.black87),
-                      onPressed: _isLoading ? null : _loadClasses,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Pilih kelas untuk melihat rekap kehadiran.',
-                    style: TextStyle(fontSize: 13, color: Colors.black54),
                   ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    onPressed: _isLoading ? null : _loadClasses,
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Pilih kelas untuk melihat rekap kehadiran.',
+                  style: TextStyle(fontSize: 14.5, color: Colors.black54, fontWeight: FontWeight.w500),
                 ),
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _ClassList(
-                  isLoading: _isLoading,
-                  errorMessage: _errorMessage,
-                  classes: _classes,
-                  onRetry: _loadClasses,
-                  onSelected: _openRecap,
-                ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _ClassList(
+                isLoading: _isLoading,
+                errorMessage: _errorMessage,
+                classes: _classes,
+                onRetry: _loadClasses,
+                onSelected: _openRecap,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -212,43 +198,22 @@ class _ClassCard extends StatelessWidget {
 
   const _ClassCard({required this.classData, required this.onTap});
 
-  static const Color iconBg = Color(0xFFDDEEF8);
-  static const Color iconColor = Color(0xFF3E87D8);
-
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _AttendanceRecapSelectClassPageState.borderColor,
+          ),
         ),
         child: Row(
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.fact_check_outlined,
-                color: iconColor,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,20 +221,23 @@ class _ClassCard extends StatelessWidget {
                   Text(
                     classData.name,
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                       color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${classData.studentCount} Siswa',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.black38),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: _AttendanceRecapSelectClassPageState.primaryBlue,
+            ),
           ],
         ),
       ),

@@ -25,6 +25,12 @@ class QrAttendancePage extends StatefulWidget {
 }
 
 class _QrAttendancePageState extends State<QrAttendancePage> {
+  static const Color primaryBlue = Color(0xFF1E88E5);
+  static const Color black = Colors.black87;
+  static const Color white = Colors.white;
+  static const Color red = Color(0xFFE53935);
+  static const Color green = Color(0xFF43A047);
+
   final QrAttendanceService _qrAttendanceService = QrAttendanceService();
 
   QrAttendanceToken? _token;
@@ -32,8 +38,6 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
   Timer? _sessionPollingTimer;
   bool _isClosing = false;
   String? _errorMessage;
-
-  static const Color primaryBlue = Color(0xFF3E87D8);
 
   @override
   void initState() {
@@ -97,7 +101,7 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
         return AlertDialog(
           title: const Text('Tutup Sesi QR?'),
           content: const Text(
-            'Apakah kamu yakin ingin menutup sesi presensi hari ini? Murid yang belum presensi tidak akan bisa presensi lagi setelah sesi ditutup.',
+            'Apakah kamu yakin ingin menutup sesi presensi hari ini?',
           ),
           actions: [
             TextButton(
@@ -107,10 +111,10 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
+                backgroundColor: red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Ya, Tutup Sesi'),
+              child: const Text('Ya, Tutup'),
             ),
           ],
         );
@@ -140,10 +144,7 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
     final token = _token;
     if (token == null) return '';
 
-    return jsonEncode({
-      'session_id': token.sessionId,
-      'token': token.token,
-    });
+    return jsonEncode({'session_id': token.sessionId, 'token': token.token});
   }
 
   void _showMessage(String message) {
@@ -155,83 +156,194 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
   @override
   Widget build(BuildContext context) {
     final students = _session?.students ?? const <QrAttendanceStudent>[];
-    final presentStudents = students.where((student) => student.status != null);
+    final presentStudents = students
+        .where((student) => student.status != null)
+        .toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      appBar: AppBar(
-        title: const Text('Presensi QR'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: _isClosing ? null : _closeSession,
-            child: _isClosing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Tutup'),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshSession,
+          color: primaryBlue,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _QrHeader(onClose: _isClosing ? null : _closeSession),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 18),
+                    _QrCard(qrData: _qrData, errorMessage: _errorMessage),
+                    const SizedBox(height: 22),
+                    _AttendanceList(
+                      presentStudents: presentStudents,
+                      totalStudents: students.length,
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QrHeader extends StatelessWidget {
+  final VoidCallback? onClose;
+
+  const _QrHeader({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 18, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded, size: 22, weight: 300),
+                label: const Text('Kembali', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.black87,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  alignment: Alignment.centerLeft,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: onClose,
+                style: TextButton.styleFrom(
+                  foregroundColor: _QrAttendancePageState.white,
+                  backgroundColor: _QrAttendancePageState.red,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Tutup Sesi'),
+              ),
+            ],
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshSession,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              widget.className,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  if (_qrData.isEmpty)
-                    const SizedBox(
-                      height: 220,
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else
-                    QrImageView(
-                      data: _qrData,
-                      version: QrVersions.auto,
-                      size: 240,
-                      backgroundColor: Colors.white,
-                    ),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Sudah Presensi (${presentStudents.length}/${students.length})',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 10),
-            if (presentStudents.isEmpty)
-              const _EmptyAttendanceCard()
-            else
-              ...presentStudents.map((student) => _PresentStudentTile(student)),
-          ],
-        ),
+    );
+  }
+}
+
+class _QrCard extends StatelessWidget {
+  final String qrData;
+  final String? errorMessage;
+
+  const _QrCard({required this.qrData, required this.errorMessage});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFD8ECFF)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
+      child: Column(
+        children: [
+          const Text(
+            'Scan QR untuk presensi',
+            style: TextStyle(
+              color: _QrAttendancePageState.black,
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Minta siswa membuka menu Presensi QR lalu scan kode ini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54, fontSize: 14),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+            child: qrData.isEmpty
+                ? const SizedBox(
+                    height: 230,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: _QrAttendancePageState.primaryBlue,
+                      ),
+                    ),
+                  )
+                : QrImageView(
+                    data: qrData,
+                    version: QrVersions.auto,
+                    size: 230,
+                    backgroundColor: Colors.white,
+                  ),
+          ),
+          if (errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.redAccent),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AttendanceList extends StatelessWidget {
+  final List<QrAttendanceStudent> presentStudents;
+  final int totalStudents;
+
+  const _AttendanceList({
+    required this.presentStudents,
+    required this.totalStudents,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Sudah Presensi (${presentStudents.length}/$totalStudents)',
+          style: const TextStyle(
+            color: _QrAttendancePageState.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (presentStudents.isEmpty)
+          const _EmptyAttendanceCard()
+        else
+          ...presentStudents.map((student) => _PresentStudentTile(student)),
+      ],
     );
   }
 }
@@ -242,15 +354,26 @@ class _EmptyAttendanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFD8ECFF)),
       ),
-      child: const Text(
-        'Belum ada siswa yang scan QR.',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.black54),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.hourglass_empty_rounded,
+            color: _QrAttendancePageState.primaryBlue,
+            size: 40,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Belum ada siswa yang scan QR.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54),
+          ),
+        ],
       ),
     );
   }
@@ -268,11 +391,20 @@ class _PresentStudentTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFD8ECFF)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: Color(0xFF2E9E5B)),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
+            child: const Icon(
+              Icons.check_circle_rounded,
+              color: _QrAttendancePageState.green,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -280,18 +412,28 @@ class _PresentStudentTile extends StatelessWidget {
               children: [
                 Text(
                   student.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                  ),
                 ),
                 Text(
                   'NIS: ${student.nis}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
               ],
             ),
           ),
           Text(
             student.checkInTime ?? '-',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: _QrAttendancePageState.black,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
