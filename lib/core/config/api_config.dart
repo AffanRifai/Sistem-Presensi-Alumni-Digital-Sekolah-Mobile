@@ -11,17 +11,10 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-<<<<<<< HEAD
-      return 'https://ashley-inner-joyce-lending.trycloudflare.com/api/v1';
+      return 'https://onion-vacuum-text-ann.trycloudflare.com/api/v1';
     }
 
-    return 'https://ashley-inner-joyce-lending.trycloudflare.com/api/v1';
-=======
-      return 'http://192.168.1.19:8000/api/v1';
-    }
-
-    return 'http://192.168.1.19:8000/api/v1';
->>>>>>> 3b2ba15eee168514bfee341eed42b5b619ab91ab
+    return 'https://onion-vacuum-text-ann.trycloudflare.com/api/v1';
   }
 
   static String get storageUrl {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+
 import '/features/home/home_page.dart';
+import '../orangtua/parent_home_page.dart';
+import 'alumni_register_page.dart';
+import 'data/auth_service.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
-import '../orangtua/parent_home_page.dart';
-
-import 'data/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -41,35 +42,9 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final result = await _authService.login(email: email, password: password);
-
       if (!mounted) return;
 
-      if (result.user.role == 'alumni' &&
-          result.user.verificationStatus == 'pending') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PendingVerificationPage(),
-          ),
-          (route) => false,
-        );
-      } else if (result.user.role == 'alumni' &&
-          result.user.verificationStatus == 'rejected') {
-        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
-        await _authService.logout();
-      } else if (result.user.role == 'parent') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const ParentHomePage()),
-          (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
-      }
+      await _routeAfterLogin(result);
     } on AuthException catch (error) {
       if (!mounted) return;
       _showMessage(error.message);
@@ -83,8 +58,54 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _handleGoogleLogin() {
-    _showMessage('Login Google belum dikonfigurasi.');
+  Future<void> _handleGoogleLogin() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final result = await _authService.loginWithGoogle();
+      if (!mounted) return;
+
+      await _routeAfterLogin(result);
+    } on AuthException catch (error) {
+      if (!mounted) return;
+      if (error.message != 'Login Google dibatalkan.') {
+        _showMessage(error.message);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Tidak bisa terhubung ke server. Periksa koneksi internet Anda.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _routeAfterLogin(AuthResult result) async {
+    if (result.user.role == 'alumni' &&
+        result.user.verificationStatus == 'pending') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
+        (route) => false,
+      );
+    } else if (result.user.role == 'alumni' &&
+        result.user.verificationStatus == 'rejected') {
+      _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+      await _authService.logout();
+    } else if (result.user.role == 'parent') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const ParentHomePage()),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
+    }
   }
 
   void _goBackToWelcome() {
@@ -95,51 +116,17 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _goToAlumniRegister() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AlumniRegisterPage()),
+    );
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
-  Future<void> _handleGoogleLogin() async {
-    setState(() => _isLoading = true);
-    try {
-      final result = await _authService.loginWithGoogle();
-      if (!mounted) return;
-
-      if (result.user.role == 'alumni' && result.user.verificationStatus == 'pending') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const PendingVerificationPage()),
-          (route) => false,
-        );
-      } else if (result.user.role == 'alumni' && result.user.verificationStatus == 'rejected') {
-        _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
-        await _authService.logout();
-      } else if (result.user.role == 'parent') {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const ParentHomePage()),
-          (route) => false,
-        );
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePage()),
-          (route) => false,
-        );
-      }
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      if (error.message != 'Login Google dibatalkan.') {
-        _showMessage(error.message);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server. Periksa koneksi internet Anda.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
   }
 
   @override
@@ -162,7 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 17),
                 label: const Text('Kembali'),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF3E87D8),
+                  foregroundColor: buttonColor,
                   textStyle: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -194,8 +181,6 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 30),
-
-                        // Kartu putih berisi input username & password
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -210,153 +195,49 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           child: Column(
                             children: [
-                              // Username field
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: fieldColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: TextField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  textInputAction: TextInputAction.next,
-                                  autofillHints: const [AutofillHints.email],
-                                  enabled: !_isLoading,
-                                  decoration: InputDecoration(
-                                    hintText: 'Email',
-                                    hintStyle: TextStyle(color: iconColor),
-                                    prefixIcon: Icon(
-                                      Icons.email_outlined,
-                                      color: iconColor,
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                  ),
-                                ),
+                              _LoginTextField(
+                                controller: _emailController,
+                                enabled: !_isLoading,
+                                hintText: 'Email',
+                                icon: Icons.email_outlined,
+                                iconColor: iconColor,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                autofillHints: const [AutofillHints.email],
+                                backgroundColor: fieldColor,
                               ),
                               const SizedBox(height: 14),
-
-<<<<<<< HEAD
-              // Divider "atau"
-              Row(
-                children: [
-                  const Expanded(child: Divider(color: Color(0xFFB0C4D8))),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'atau',
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const Expanded(child: Divider(color: Color(0xFFB0C4D8))),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Tombol Login dengan Google
-              SizedBox(
-                height: 54,
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _handleGoogleLogin,
-                  icon: Image.network(
-                    'https://developers.google.com/identity/images/g-logo.png',
-                    height: 22,
-                    width: 22,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.g_mobiledata,
-                      size: 26,
-                      color: Color(0xFF4285F4),
-                    ),
-                  ),
-                  label: const Text(
-                    'Masuk dengan Google',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF374151),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: Color(0xFFD1D5DB)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Link to Registration
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AlumniRegisterPage()),
-                  );
-                },
-                child: const Text(
-                  'Belum punya akun? Daftar sebagai Alumni',
-                  style: TextStyle(
-                    color: Color(0xFF3E87D8),
-                    fontWeight: FontWeight.w600,
-=======
-                              // Password field
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: fieldColor,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: TextField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  textInputAction: TextInputAction.done,
-                                  autofillHints: const [AutofillHints.password],
-                                  enabled: !_isLoading,
-                                  onSubmitted: (_) => _handleLogin(),
-                                  decoration: InputDecoration(
-                                    hintText: 'Password',
-                                    hintStyle: TextStyle(color: iconColor),
-                                    prefixIcon: Icon(
-                                      Icons.lock_outline,
-                                      color: iconColor,
-                                    ),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        color: iconColor,
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _obscurePassword = !_obscurePassword;
-                                        });
-                                      },
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
+                              _LoginTextField(
+                                controller: _passwordController,
+                                enabled: !_isLoading,
+                                hintText: 'Password',
+                                icon: Icons.lock_outline,
+                                iconColor: iconColor,
+                                obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                autofillHints: const [AutofillHints.password],
+                                backgroundColor: fieldColor,
+                                onSubmitted: (_) => _handleLogin(),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: iconColor,
                                   ),
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          setState(() {
+                                            _obscurePassword = !_obscurePassword;
+                                          });
+                                        },
                                 ),
                               ),
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 22),
-
-                        // Tombol Login
                         Center(
                           child: SizedBox(
                             width: 220,
@@ -390,9 +271,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 14),
-
                         Row(
                           children: [
                             Expanded(
@@ -417,9 +296,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ],
                         ),
-
                         const SizedBox(height: 14),
-
                         Center(
                           child: SizedBox(
                             width: 220,
@@ -445,14 +322,82 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: _isLoading ? null : _goToAlumniRegister,
+                          child: const Text(
+                            'Belum punya akun? Daftar sebagai Alumni',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: buttonColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
->>>>>>> 3b2ba15eee168514bfee341eed42b5b619ab91ab
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool enabled;
+  final String hintText;
+  final IconData icon;
+  final Color iconColor;
+  final Color backgroundColor;
+  final bool obscureText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+  final Widget? suffixIcon;
+  final ValueChanged<String>? onSubmitted;
+
+  const _LoginTextField({
+    required this.controller,
+    required this.enabled,
+    required this.hintText,
+    required this.icon,
+    required this.iconColor,
+    required this.backgroundColor,
+    this.obscureText = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
+    this.suffixIcon,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        autofillHints: autofillHints,
+        onSubmitted: onSubmitted,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: iconColor),
+          prefixIcon: Icon(icon, color: iconColor),
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
         ),
       ),
     );
