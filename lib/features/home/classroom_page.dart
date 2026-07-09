@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-import '../kelas/kelas_guru_page.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 
@@ -23,20 +21,6 @@ class ClassroomPage extends StatelessWidget {
               title: 'Ruang Kelas',
               subtitle: 'Akses cepat ke data kelas yang kamu ampu.',
               icon: Icons.class_rounded,
-            ),
-            const SizedBox(height: 18),
-            _ClassroomActionCard(
-              title: 'Kelas yang Diampu',
-              subtitle: 'Lihat daftar kelas sesuai akun guru yang login.',
-              icon: Icons.groups_2_rounded,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TeacherClassesPage(),
-                  ),
-                );
-              },
             ),
             const SizedBox(height: 14),
             _ClassroomActionCard(

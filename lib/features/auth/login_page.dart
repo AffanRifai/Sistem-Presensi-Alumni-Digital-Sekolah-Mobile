@@ -102,10 +102,11 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFFCFE7F5);
+    const Color backgroundColor = Color(0xFFFFFFFF);
     const Color fieldColor = Color(0xFFFFFFFF);
     const Color buttonColor = Color(0xFF3E87D8);
     const Color iconColor = Color(0xFF7A8B96);
+
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -151,21 +152,11 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.black87,
                           ),
                         ),
-                        const SizedBox(height: 30),
+                        const SizedBox(height: 24),
 
                         // Kartu putih berisi input username & password
                         Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.05),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             children: [
                               // Username field
@@ -173,6 +164,7 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color.fromARGB(255, 157, 160, 164)),
                                 ),
                                 child: TextField(
                                   controller: _emailController,
@@ -201,6 +193,7 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color.fromARGB(255, 157, 160, 164)),
                                 ),
                                 child: TextField(
                                   controller: _passwordController,
@@ -291,7 +284,7 @@ class _LoginPageState extends State<LoginPage> {
                               child: Text(
                                 'atau',
                                 style: TextStyle(
-                                  color: Colors.black45,
+                                  color: Colors.black54,
                                   fontSize: 12,
                                 ),
                               ),
@@ -318,7 +311,7 @@ class _LoginPageState extends State<LoginPage> {
                                 foregroundColor: Colors.black87,
                                 backgroundColor: Colors.white,
                                 side: const BorderSide(
-                                  color: Color(0xFFD9E2EC),
+                                  color: Color.fromARGB(255, 157, 161, 165),
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(24),

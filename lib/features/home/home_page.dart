@@ -4,7 +4,6 @@ import '../alumni/alumni_event_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
 import '../auth/data/auth_service.dart';
-import '../kelas/kelas_guru_page.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
@@ -351,7 +350,6 @@ class _MenuSection extends StatelessWidget {
     }
 
     final Widget page = switch (item.label) {
-      'Kelas Diampu' => const TeacherClassesPage(),
       'Lihat Kelas Anda' => const ClassRecapListPage(),
       'Riwayat Kehadiran' => const AttendanceHistoryPage(),
       'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),

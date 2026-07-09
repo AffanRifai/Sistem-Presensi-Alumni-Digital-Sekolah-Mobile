@@ -104,8 +104,6 @@ class _StudentKehadiranPageState extends State<StudentKehadiranPage> {
   static const Color primaryBlue = Color(0xFF1E88E5);
   static const Color darkBlue = Color(0xFF0D47A1);
   static const Color softBlue = Color(0xFFEAF5FF);
-  static const Color softGreen = Color(0xFFE8F8EF);
-  static const Color softOrange = Color(0xFFFFF3E0);
 
   final PresensiService _presensiService = PresensiService();
 
@@ -408,7 +406,8 @@ class _StudentKehadiranPageState extends State<StudentKehadiranPage> {
                     child: Text(
                       'Izin: ${_countStatus(KehadiranStatus.izin)}  '
                       'Sakit: ${_countStatus(KehadiranStatus.sakit)}  '
-                      'Alpha: ${_countStatus(KehadiranStatus.alpha)}',
+                      'Alpha: ${_countStatus(KehadiranStatus.alpha)}  '
+                      'Terlambat: ${_countStatus(KehadiranStatus.terlambat)}',
                       style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black54,
@@ -462,21 +461,16 @@ class _ManualHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: _StudentKehadiranPageState.darkBlue,
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 12),
-            child: Text(
+    return Transform.translate(
+      offset: const Offset(-60, 0),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 18, 20, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _HeaderBackButton(onTap: () => Navigator.pop(context)),
+            const SizedBox(height: 18),
+            const Text(
               'Presensi Manual',
               style: TextStyle(
                 color: Colors.black87,
@@ -484,64 +478,47 @@ class _ManualHeader extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 12, top: 6),
-            child: Text(
-              '$className • $dateText',
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '$className • $dateText',
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
+class _HeaderBackButton extends StatelessWidget {
+  final VoidCallback onTap;
 
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _HeaderBackButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: label == 'Hadir'
-            ? _StudentKehadiranPageState.softGreen
-            : label == 'Terlambat'
-            ? _StudentKehadiranPageState.softOrange
-            : _StudentKehadiranPageState.softBlue,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD8ECFF)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: _StudentKehadiranPageState.primaryBlue, size: 22),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: _StudentKehadiranPageState.darkBlue,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.arrow_back, size: 24, color: Colors.black87),
+            SizedBox(width: 8),
+            Text(
+              'Kembali',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.black54, fontSize: 11),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

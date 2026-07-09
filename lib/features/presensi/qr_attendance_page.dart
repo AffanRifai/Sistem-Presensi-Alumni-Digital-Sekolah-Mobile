@@ -26,9 +26,10 @@ class QrAttendancePage extends StatefulWidget {
 
 class _QrAttendancePageState extends State<QrAttendancePage> {
   static const Color primaryBlue = Color(0xFF1E88E5);
-  static const Color darkBlue = Color(0xFF0D47A1);
-  static const Color softBlue = Color(0xFFEAF5FF);
-  static const Color softGreen = Color(0xFFE8F8EF);
+  static const Color black = Colors.black87;
+  static const Color white = Colors.white;
+  static const Color red = Color(0xFFE53935);
+  static const Color green = Color(0xFF43A047);
 
   final QrAttendanceService _qrAttendanceService = QrAttendanceService();
 
@@ -110,7 +111,7 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
+                backgroundColor: red,
                 foregroundColor: Colors.white,
               ),
               child: const Text('Ya, Tutup'),
@@ -173,29 +174,6 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _SummaryCard(
-                            icon: Icons.groups_rounded,
-                            label: 'Total Siswa',
-                            value: students.length.toString(),
-                            backgroundColor: softBlue,
-                            iconColor: primaryBlue,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _SummaryCard(
-                            icon: Icons.check_circle_rounded,
-                            label: 'Sudah Scan',
-                            value: presentStudents.length.toString(),
-                            backgroundColor: softGreen,
-                            iconColor: const Color(0xFF22A862),
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 18),
                     _QrCard(qrData: _qrData, errorMessage: _errorMessage),
                     const SizedBox(height: 22),
@@ -223,85 +201,50 @@ class _QrHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 12, 20, 8),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(25, 18, 20, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
-              color: _QrAttendancePageState.darkBlue,
-            ),
-          ),
-          const Expanded(
-            child: Text(
-              'Presensi QR',
-              style: TextStyle(
-                color: _QrAttendancePageState.darkBlue,
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          TextButton.icon(
-            onPressed: onClose,
-            icon: const Icon(Icons.stop_circle_outlined, size: 18),
-            label: const Text('Tutup'),
-            style: TextButton.styleFrom(
-              foregroundColor: _QrAttendancePageState.primaryBlue,
-              backgroundColor: _QrAttendancePageState.softBlue,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color backgroundColor;
-  final Color iconColor;
-
-  const _SummaryCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFD8ECFF)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 25),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
             children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: _QrAttendancePageState.darkBlue,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded, size: 22, weight: 300),
+                label: const Text('Kembali', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.black87,
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  alignment: Alignment.centerLeft,
                 ),
               ),
-              Text(
-                label,
-                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              const Spacer(),
+              TextButton(
+                onPressed: onClose,
+                style: TextButton.styleFrom(
+                  foregroundColor: _QrAttendancePageState.white,
+                  backgroundColor: _QrAttendancePageState.red,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Tutup Sesi'),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Presensi QR',
+            style: TextStyle(
+              color: _QrAttendancePageState.black,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ],
       ),
@@ -337,7 +280,7 @@ class _QrCard extends StatelessWidget {
           const Text(
             'Scan QR untuk presensi',
             style: TextStyle(
-              color: _QrAttendancePageState.darkBlue,
+              color: _QrAttendancePageState.black,
               fontSize: 17,
               fontWeight: FontWeight.w900,
             ),
@@ -351,10 +294,7 @@ class _QrCard extends StatelessWidget {
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _QrAttendancePageState.softBlue,
-              borderRadius: BorderRadius.circular(24),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
             child: qrData.isEmpty
                 ? const SizedBox(
                     height: 230,
@@ -402,7 +342,7 @@ class _AttendanceList extends StatelessWidget {
         Text(
           'Sudah Presensi (${presentStudents.length}/$totalStudents)',
           style: const TextStyle(
-            color: _QrAttendancePageState.darkBlue,
+            color: _QrAttendancePageState.black,
             fontSize: 17,
             fontWeight: FontWeight.w900,
           ),
@@ -426,7 +366,6 @@ class _EmptyAttendanceCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: _QrAttendancePageState.softBlue,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFD8ECFF)),
       ),
@@ -469,13 +408,10 @@ class _PresentStudentTile extends StatelessWidget {
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(
-              color: _QrAttendancePageState.softBlue,
-              borderRadius: BorderRadius.circular(14),
-            ),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
             child: const Icon(
               Icons.check_circle_rounded,
-              color: _QrAttendancePageState.primaryBlue,
+              color: _QrAttendancePageState.green,
             ),
           ),
           const SizedBox(width: 12),
@@ -502,7 +438,7 @@ class _PresentStudentTile extends StatelessWidget {
           Text(
             student.checkInTime ?? '-',
             style: const TextStyle(
-              color: _QrAttendancePageState.darkBlue,
+              color: _QrAttendancePageState.black,
               fontWeight: FontWeight.w900,
             ),
           ),

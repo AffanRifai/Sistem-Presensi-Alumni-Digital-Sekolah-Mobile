@@ -276,20 +276,18 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 8, 20, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.black87),
-            padding: EdgeInsets.zero,
-            alignment: Alignment.centerLeft,
-          ),
-          Padding(
-            padding: EdgeInsets.zero,
-            child: Text(
+    final offsetX = title == 'Presensi QR' ? -22.0 : -12.0;
+
+    return Transform.translate(
+      offset: Offset(offsetX, 0),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 18, 20, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _HeaderBackButton(onTap: () => Navigator.pop(context)),
+            const SizedBox(height: 18),
+            Text(
               title,
               style: const TextStyle(
                 color: Colors.black87,
@@ -297,15 +295,47 @@ class _Header extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6),
-            child: Text(
-              subtitle,
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                subtitle,
+                style: const TextStyle(color: Colors.black54, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HeaderBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.arrow_back, size: 24, color: Colors.black87),
+            SizedBox(width: 8),
+            Text(
+              'Kembali',
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -371,7 +401,10 @@ class _DatePickerCard extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.edit_calendar_rounded, color: Color.fromARGB(255, 255, 161, 20)),
+            const Icon(
+              Icons.edit_calendar_rounded,
+              color: Color.fromARGB(255, 255, 161, 20),
+            ),
           ],
         ),
       ),
