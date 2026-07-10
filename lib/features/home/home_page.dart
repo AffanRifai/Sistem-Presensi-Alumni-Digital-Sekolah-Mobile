@@ -13,7 +13,6 @@ import '../presensi/scan_qr_attendance_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../siswa/data/student_attendance_models.dart';
 import '../siswa/data/student_attendance_service.dart';
-import 'classroom_page.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
 
@@ -93,7 +92,8 @@ class _HomePageState extends State<HomePage> {
         // Cek apakah user adalah alumni
         final bool isAlumni = snapshot.data?.role == 'alumni';
         final bool isStudent = snapshot.data?.role == 'student';
-        final int profileIndex = 2;
+        final bool isTeacher = snapshot.data?.role == 'teacher';
+        final int profileIndex = (isAlumni || isStudent || isTeacher) ? 2 : 1;
 
         // Tentukan halaman berdasarkan role
         final List<Widget> pages = isAlumni
@@ -105,16 +105,39 @@ class _HomePageState extends State<HomePage> {
                 const AlumniEventPage(), // Index 1: Event Alumni
                 const AlumniProfilePage(), // Index 2: Profil Alumni
               ]
+            : isTeacher
+            ? [
+                _HomeDashboard(
+                  userFuture: _userFuture,
+                  onProfileTap: () => _goToProfile(profileIndex),
+                ),
+                const ClassRecapListPage(),
+                UserProfilePage(
+                  userFuture: _userFuture,
+                  authService: _authService,
+                ),
+              ]
+            : isStudent
+            ? [
+                _HomeDashboard(
+                  userFuture: _userFuture,
+                  onProfileTap: () => _goToProfile(profileIndex),
+                ),
+                const SizedBox.shrink(),
+                UserProfilePage(
+                  userFuture: _userFuture,
+                  authService: _authService,
+                ),
+              ]
             : [
                 _HomeDashboard(
                   userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
-                ), // Index 0: Home Dashboard Normal (Siswa/Guru)
-                const ClassroomPage(), // Index 1: Ruang Kelas
+                ),
                 UserProfilePage(
                   userFuture: _userFuture,
                   authService: _authService,
-                ), // Index 2: Profil User Biasa
+                ),
               ];
 
         // Proteksi jika index di luar batas saat perpindahan role
@@ -127,6 +150,7 @@ class _HomePageState extends State<HomePage> {
           bottomNavigationBar: _MainBottomNavigation(
             isAlumni: isAlumni,
             isStudent: isStudent,
+            isTeacher: isTeacher,
             selectedIndex: safeIndex,
             onTap: (index) =>
                 _handleBottomNavTap(context, index, isAlumni, isStudent),
@@ -747,6 +771,7 @@ class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
 
   bool _isLoading = true;
   String? _errorMessage;
+  String _studentName = '-';
   List<StudentAttendanceRecord> _records = const [];
 
   @override
@@ -768,7 +793,8 @@ class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
       );
       if (!mounted) return;
       setState(() {
-        _records = summary.records.take(3).toList();
+        _studentName = summary.profile?.name ?? '-';
+        _records = summary.records;
         _isLoading = false;
       });
     } catch (_) {
@@ -782,152 +808,53 @@ class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFD6D9)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.history_outlined,
-                  color: Color(0xFFE53935),
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Riwayat Kehadiran',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Daftar kehadiran terbaru Anda bulan ini.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Riwayat Kehadiran',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: Colors.black87,
           ),
-          const SizedBox(height: 16),
-          if (_isLoading)
-            const SizedBox(
-              height: 80,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_errorMessage != null)
-            Text(
-              _errorMessage!,
-              style: const TextStyle(fontSize: 13, color: Colors.black54),
-            )
-          else if (_records.isEmpty)
-            const Text(
-              'Belum ada data kehadiran bulan ini.',
-              style: TextStyle(fontSize: 13, color: Colors.black54),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFFFD6D9)),
-              ),
-              child: Column(
-                children: [
-                  const Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Tanggal',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Status',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      SizedBox(
-                        width: 70,
-                        child: Text(
-                          'Jam',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black54,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(
-                    height: 12,
-                    thickness: 1,
-                    color: Color(0xFFFFD6D9),
-                  ),
-                  ..._records.map((record) => _AttendanceRow(record: record)),
-                ],
-              ),
-            ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Daftar kehadiran terbaru Anda bulan ini.',
+          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+        ),
+        const SizedBox(height: 12),
+        if (_isLoading)
+          const SizedBox(
+            height: 80,
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_errorMessage != null)
+          Text(
+            _errorMessage!,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
+          )
+        else if (_records.isEmpty)
+          const Text(
+            'Belum ada data kehadiran bulan ini.',
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          )
+        else
+          _StudentAttendanceTable(studentName: _studentName, records: _records),
+      ],
     );
   }
 }
 
-class _AttendanceRow extends StatelessWidget {
-  final StudentAttendanceRecord record;
+class _StudentAttendanceTable extends StatelessWidget {
+  final String studentName;
+  final List<StudentAttendanceRecord> records;
 
-  const _AttendanceRow({required this.record});
-
-  Color _statusColor(String status) {
-    return switch (status) {
-      'present' => const Color(0xFF16A34A),
-      'late' => const Color(0xFFF59E0B),
-      'permission' => const Color(0xFF7C3AED),
-      'sick' => const Color(0xFF0F766E),
-      'absent' => const Color(0xFFDC2626),
-      _ => const Color(0xFF6B7280),
-    };
-  }
+  const _StudentAttendanceTable({
+    required this.studentName,
+    required this.records,
+  });
 
   String _formatDate(DateTime date) {
     const months = [
@@ -947,55 +874,99 @@ class _AttendanceRow extends StatelessWidget {
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
+  String _formatAttendanceTime(StudentAttendanceRecord record) {
+    final time = record.checkInTime;
+    if (time == null || time.trim().isEmpty) {
+      return _formatDate(record.date);
+    }
+
+    return '${_formatDate(record.date)}\n$time';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final statusColor = _statusColor(record.status);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              _formatDate(record.date),
-              style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                record.statusLabel,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  color: statusColor,
-                  fontWeight: FontWeight.w700,
+    return SizedBox(
+      width: double.infinity,
+      height: records.length * 74 + 42, // Perkiraan tinggi tabel berdasarkan jumlah baris
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  headingRowHeight: 42,
+                  dataRowMinHeight: 50,
+                  dataRowMaxHeight: 74,
+                  horizontalMargin: 8,
+                  columnSpacing: 14,
+                  border: TableBorder.all(
+                    color: const Color(0xFFE0E0E0),
+                    width: 1.2,
+                  ),
+                  headingTextStyle: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black54,
+                  ),
+                  dataTextStyle: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.black87,
+                  ),
+                  columns: const [
+                    DataColumn(label: Text('No')),
+                    DataColumn(label: Text('Nama')),
+                    DataColumn(label: Text('Waktu Presensi')),
+                    DataColumn(label: Text('Status Presensi')),
+                  ],
+                  rows: List.generate(records.length, (index) {
+                    final record = records[index];
+                    return DataRow(
+                      cells: [
+                        DataCell(Text('${index + 1}')),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minWidth: 120,
+                              maxWidth: 240,
+                            ),
+                            child: Text(
+                              studentName,
+                              softWrap: true,
+                              overflow: TextOverflow.visible,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minWidth: 150,
+                              maxWidth: 240,
+                            ),
+                            child: Text(
+                              _formatAttendanceTime(record),
+                              softWrap: true,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Text(
+                            record.statusLabel,
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 70,
-            child: Text(
-              record.checkInTime != null && record.checkInTime!.isNotEmpty
-                  ? record.checkInTime!
-                  : '-',
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -1177,18 +1148,27 @@ class _MenuTile extends StatelessWidget {
 class _MainBottomNavigation extends StatelessWidget {
   final bool isAlumni;
   final bool isStudent;
+  final bool isTeacher;
   final int selectedIndex;
   final ValueChanged<int> onTap;
 
   const _MainBottomNavigation({
     required this.isAlumni,
     required this.isStudent,
+    required this.isTeacher,
     required this.selectedIndex,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isStudent) {
+      return _StudentBottomNavigation(
+        selectedIndex: selectedIndex,
+        onTap: onTap,
+      );
+    }
+
     // Navigasi Bawah Khusus Alumni HANYA 3 MENU (Home, Event, Profil)
     final List<BottomNavigationBarItem> navItems = isAlumni
         ? const [
@@ -1226,85 +1206,8 @@ class _MainBottomNavigation extends StatelessWidget {
               label: 'Profil',
             ),
           ]
-        : isStudent
-        ? [
-            const BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.home_outlined),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.home),
-              ),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF1E88E5).withValues(alpha: 0.28),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_scanner,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF1E88E5).withValues(alpha: 0.28),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.qr_code_scanner,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-              ),
-              label: 'QR',
-            ),
-            const BottomNavigationBarItem(
-              icon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.person_outline),
-              ),
-              activeIcon: Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.person),
-              ),
-              label: 'Profil',
-            ),
-          ]
-        : const [
+        : isTeacher
+        ? const [
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
@@ -1338,6 +1241,30 @@ class _MainBottomNavigation extends StatelessWidget {
               ),
               label: 'Profil',
             ),
+          ]
+        : const [
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home_outlined),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.home),
+              ),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person_outline),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.person),
+              ),
+              label: 'Profil',
+            ),
           ];
 
     return Container(
@@ -1345,23 +1272,189 @@ class _MainBottomNavigation extends StatelessWidget {
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
-      child: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: onTap,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        selectedItemColor: const Color(0xFF1E88E5), // primaryBlue
-        unselectedItemColor: Colors.grey.shade500,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 76,
+          child: BottomNavigationBar(
+            currentIndex: selectedIndex,
+            onTap: onTap,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            iconSize: 30,
+            selectedItemColor: const Color(0xFF1E88E5), // primaryBlue
+            unselectedItemColor: Colors.grey.shade500,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            type: BottomNavigationBarType.fixed,
+            items: navItems,
+          ),
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 11,
+      ),
+    );
+  }
+}
+
+class _StudentBottomNavigation extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  const _StudentBottomNavigation({
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  static const Color primaryBlue = Color(0xFF1E88E5);
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
+
+    return SizedBox(
+      height: 104 + bottomPadding,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 78 + bottomPadding,
+              padding: EdgeInsets.only(bottom: bottomPadding),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade200, width: 1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, -6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _StudentNavSideItem(
+                      icon: selectedIndex == 0
+                          ? Icons.home_rounded
+                          : Icons.home_outlined,
+                      label: 'Home',
+                      selected: selectedIndex == 0,
+                      onTap: () => onTap(0),
+                    ),
+                  ),
+                  const Expanded(child: SizedBox()),
+                  Expanded(
+                    child: _StudentNavSideItem(
+                      icon: selectedIndex == 2
+                          ? Icons.person_rounded
+                          : Icons.person_outline_rounded,
+                      label: 'Profil',
+                      selected: selectedIndex == 2,
+                      onTap: () => onTap(2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: 0,
+            child: GestureDetector(
+              onTap: () => onTap(1),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primaryBlue,
+                      border: Border.all(color: Colors.white, width: 4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryBlue.withValues(alpha: 0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Scan',
+                    style: TextStyle(
+                      color: primaryBlue,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentNavSideItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _StudentNavSideItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected
+        ? _StudentBottomNavigation.primaryBlue
+        : Colors.grey.shade500;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(height: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ],
         ),
-        type: BottomNavigationBarType.fixed,
-        items: navItems,
       ),
     );
   }

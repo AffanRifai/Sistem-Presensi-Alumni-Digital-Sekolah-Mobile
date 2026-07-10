@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '/features/home/home_page.dart';
 import '../../core/config/api_config.dart';
 import 'alumni_register_page.dart';
+import 'forgot_password_page.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
 import 'widgets/google_login_button.dart';
@@ -13,7 +14,9 @@ import 'widgets/google_login_button.dart';
 import 'data/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final String? initialMessage;
+
+  const LoginPage({super.key, this.initialMessage});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -33,6 +36,13 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _initializeGoogleSignIn();
+
+    final message = widget.initialMessage;
+    if (message != null && message.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showMessage(message);
+      });
+    }
   }
 
   @override
@@ -231,7 +241,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _handleForgotPassword() {
-    _showMessage('Fitur lupa password belum tersedia.');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+    );
   }
 
   void _goBackToWelcome() {

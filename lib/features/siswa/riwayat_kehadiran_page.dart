@@ -252,6 +252,7 @@ class _HistoryContent extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _LogCard(
+            studentName: data.profile!.name,
             records: data.records,
             statusColor: statusColor,
             formatDate: formatDate,
@@ -427,11 +428,13 @@ class _MonthFilterCard extends StatelessWidget {
 }
 
 class _LogCard extends StatelessWidget {
+  final String studentName;
   final List<StudentAttendanceRecord> records;
   final Color Function(String status) statusColor;
   final String Function(DateTime date) formatDate;
 
   const _LogCard({
+    required this.studentName,
     required this.records,
     required this.statusColor,
     required this.formatDate,
@@ -439,127 +442,123 @@ class _LogCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _WhiteCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(
-                'Log Riwayat',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              Text(
-                'Presensi Siswa',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Log Riwayat',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.black87,
           ),
-          const SizedBox(height: 14),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    'NO',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black45,
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: records.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  child: Center(
+                    child: Text(
+                      'Belum ada riwayat presensi.',
+                      style: TextStyle(color: Colors.black54),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: Text(
-                    'HARI/TANGGAL',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black45,
-                    ),
-                  ),
-                ),
-                Text(
-                  'STATUS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          if (records.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Center(
-                child: Text(
-                  'Belum ada riwayat presensi.',
-                  style: TextStyle(color: Colors.black54),
-                ),
-              ),
-            )
-          else
-            ...List.generate(records.length, (index) {
-              final record = records[index];
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 28,
-                          child: Text(
-                            '${index + 1}',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black87,
-                            ),
-                          ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: constraints.maxWidth,
                         ),
-                        Expanded(
-                          child: Text(
-                            formatDate(record.date),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          record.statusLabel.toUpperCase(),
-                          style: TextStyle(
+                        child: DataTable(
+                          headingRowHeight: 42,
+                          dataRowMinHeight: 50,
+                          dataRowMaxHeight: 74,
+                          horizontalMargin: 12,
+                          columnSpacing: 18,
+                          headingTextStyle: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: statusColor(record.status),
+                            color: Colors.black54,
                           ),
+                          dataTextStyle: const TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black87,
+                          ),
+                          columns: const [
+                            DataColumn(label: Text('No')),
+                            DataColumn(label: Text('Nama')),
+                            DataColumn(label: Text('Waktu Presensi')),
+                            DataColumn(label: Text('Status Presensi')),
+                          ],
+                          rows: List.generate(records.length, (index) {
+                            final record = records[index];
+                            return DataRow(
+                              cells: [
+                                DataCell(Text('${index + 1}')),
+                                DataCell(
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 120,
+                                      maxWidth: 220,
+                                    ),
+                                    child: Text(
+                                      studentName,
+                                      softWrap: true,
+                                      overflow: TextOverflow.visible,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      minWidth: 150,
+                                      maxWidth: 220,
+                                    ),
+                                    child: Text(
+                                      _formatAttendanceTime(record),
+                                      softWrap: true,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    record.statusLabel,
+                                    style: TextStyle(
+                                      color: statusColor(record.status),
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }),
                         ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                ],
-              );
-            }),
-        ],
-      ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
+  }
+
+  String _formatAttendanceTime(StudentAttendanceRecord record) {
+    final time = record.checkInTime;
+    if (time == null || time.trim().isEmpty) {
+      return formatDate(record.date);
+    }
+
+    return '${formatDate(record.date)}\n$time';
   }
 }
 
