@@ -35,11 +35,26 @@ class JobVacancy {
   });
 
   factory JobVacancy.fromJson(Map<String, dynamic> json) {
-    final salaryMin =
+    int? salaryMin;
+    int? salaryMax;
+
+    final salaryRange = json['salary_range']?.toString() ?? '';
+    if (salaryRange.isNotEmpty) {
+      final parts = salaryRange.split('-').map((s) => s.trim()).toList();
+      if (parts.length == 2) {
+        salaryMin = _parseSalaryValue(parts[0]);
+        salaryMax = _parseSalaryValue(parts[1]);
+      } else if (parts.length == 1) {
+        salaryMin = _parseSalaryValue(parts[0]);
+      }
+    }
+
+    // Fallback ke field terpisah jika ada
+    salaryMin ??=
         _parseSalaryValue(json['salary_min']) ??
         _parseSalaryValue(json['min_salary']) ??
         _parseSalaryValue(json['salary']);
-    final salaryMax =
+    salaryMax ??=
         _parseSalaryValue(json['salary_max']) ??
         _parseSalaryValue(json['max_salary']);
 
