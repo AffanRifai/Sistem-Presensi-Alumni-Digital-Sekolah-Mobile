@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:672967726472:android:0d13dc434d0489e91ed63d",
+        "mobilesdk_app_id": "1:672967726472:android:b4551134010a1deb1ed63d",
         "android_client_info": {
-          "package_name": "com.simpad"
+          "package_name": "com.example.sistem_presensi_digital_sekolah"
         }
       },
       "oauth_client": [
