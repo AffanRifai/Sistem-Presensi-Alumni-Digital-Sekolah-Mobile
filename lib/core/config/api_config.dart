@@ -7,7 +7,7 @@ class ApiConfig {
   static const String googleWebClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
     defaultValue:
-        '833253908047-25s0bldnepokl7jhco1safds2o499g66.apps.googleusercontent.com',
+        '672967726472-chqbv8hfl85h6m8vvq764msaep7umnn6.apps.googleusercontent.com',
   );
 
   static String get baseUrl {
@@ -16,10 +16,10 @@ class ApiConfig {
     }
 
     if (kIsWeb) {
-      return 'http://192.168.1.13:8000/api/v1';
+      return 'http://192.168.100.13:8000/api/v1';
     }
 
-    return 'http://192.168.1.13:8000/api/v1';
+    return 'http://192.168.100.13:8000/api/v1';
   }
 
   static String get storageUrl {

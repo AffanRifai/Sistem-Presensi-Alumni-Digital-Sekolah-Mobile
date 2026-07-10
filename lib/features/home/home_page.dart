@@ -6,6 +6,7 @@ import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
 import '../auth/data/auth_service.dart';
 import '../kelas/list_rekap_kelas_page.dart';
+import '../notification/data/notification_controller.dart';
 import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
@@ -36,9 +37,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _userFuture = _authService.readUser();
-    
+
     // Inisialisasi token FCM perangkat dan daftarkan ke Laravel backend
     FcmService().init();
+    NotificationController.instance.refreshUnreadCount();
   }
 
   // Fungsi untuk melompat ke tab profil jika avatar diklik
@@ -332,30 +334,82 @@ class _HeaderSection extends StatelessWidget {
                       },
                     ),
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationPage(),
-                        ),
+                  AnimatedBuilder(
+                    animation: NotificationController.instance,
+                    builder: (context, _) {
+                      final unreadCount =
+                          NotificationController.instance.unreadCount;
+
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const NotificationPage(),
+                                ),
+                              );
+                              NotificationController.instance
+                                  .refreshUnreadCount();
+                            },
+                            icon: const Icon(
+                              Icons.notifications_none_rounded,
+                              color: Colors.white,
+                            ),
+                            tooltip: 'Notifikasi',
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.15,
+                              ),
+                              padding: const EdgeInsets.all(10),
+                            ),
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -2,
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Text(
+                                  unreadCount > 99
+                                      ? '99+'
+                                      : unreadCount.toString(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       );
                     },
-                    icon: const Icon(
-                      Icons.notifications_none_rounded,
-                      color: Colors.white,
-                    ),
-                    tooltip: 'Notifikasi',
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      padding: const EdgeInsets.all(10),
-                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 40),
               const Text(
-                'Sistem Presensi\nDigital Sekolah',
+                'Sistem Digital Sekolah',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 26,

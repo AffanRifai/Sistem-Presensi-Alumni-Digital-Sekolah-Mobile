@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
-class NotificationPage extends StatelessWidget {
+import 'data/app_notification_models.dart';
+import 'data/notification_controller.dart';
+
+class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
   static const Color primaryBlue = Color(0xFF1E88E5);
@@ -9,9 +12,25 @@ class NotificationPage extends StatelessWidget {
   static const Color borderColor = Color(0xFFE5E7EB);
 
   @override
-  Widget build(BuildContext context) {
-    final notifications = _sampleNotifications;
+  State<NotificationPage> createState() => _NotificationPageState();
+}
 
+class _NotificationPageState extends State<NotificationPage> {
+  final NotificationController _controller = NotificationController.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.load().then((_) => _controller.markAllAsRead());
+  }
+
+  Future<void> _refresh() async {
+    await _controller.load();
+    await _controller.markAllAsRead();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -20,21 +39,17 @@ class NotificationPage extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 20, 14),
-              child: Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded),
-                    label: const Text('Kembali'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: textDark,
-                      textStyle: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+              child: TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('Kembali'),
+                style: TextButton.styleFrom(
+                  foregroundColor: NotificationPage.textDark,
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
+                ),
               ),
             ),
             const Padding(
@@ -42,7 +57,7 @@ class NotificationPage extends StatelessWidget {
               child: Text(
                 'Notifikasi',
                 style: TextStyle(
-                  color: textDark,
+                  color: NotificationPage.textDark,
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                 ),
@@ -52,9 +67,9 @@ class NotificationPage extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                'Informasi akademik dan pengumuman sekolah.',
+                'Presensi dan informasi terbaru dari sekolah.',
                 style: TextStyle(
-                  color: textMuted,
+                  color: NotificationPage.textMuted,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -62,9 +77,34 @@ class NotificationPage extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Expanded(
-              child: notifications.isEmpty
-                  ? const _EmptyNotification()
-                  : ListView.separated(
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  if (_controller.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: NotificationPage.primaryBlue,
+                      ),
+                    );
+                  }
+
+                  if (_controller.errorMessage != null) {
+                    return _ErrorNotification(
+                      message: _controller.errorMessage!,
+                      onRetry: _refresh,
+                    );
+                  }
+
+                  final notifications = _controller.notifications;
+                  if (notifications.isEmpty) {
+                    return const _EmptyNotification();
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    color: NotificationPage.primaryBlue,
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                       itemCount: notifications.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -74,6 +114,9 @@ class NotificationPage extends StatelessWidget {
                         );
                       },
                     ),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -82,37 +125,28 @@ class NotificationPage extends StatelessWidget {
   }
 }
 
-class _NotificationItem {
-  final IconData icon;
-  final String title;
-  final String message;
-  final String time;
-  final Color color;
-  final Color backgroundColor;
-
-  const _NotificationItem({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.time,
-    required this.color,
-    required this.backgroundColor,
-  });
-}
-
 class _NotificationCard extends StatelessWidget {
-  final _NotificationItem notification;
+  final AppNotificationModel notification;
 
   const _NotificationCard({required this.notification});
 
   @override
   Widget build(BuildContext context) {
+    final isAttendance = notification.type == 'student_attendance_recorded';
+    final color = isAttendance
+        ? NotificationPage.primaryBlue
+        : const Color(0xFF20A67A);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: notification.isUnread ? const Color(0xFFF8FBFF) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: NotificationPage.borderColor),
+        border: Border.all(
+          color: notification.isUnread
+              ? NotificationPage.primaryBlue.withValues(alpha: 0.28)
+              : NotificationPage.borderColor,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,27 +155,50 @@ class _NotificationCard extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: notification.backgroundColor,
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(notification.icon, color: notification.color, size: 24),
+            child: Icon(
+              isAttendance
+                  ? Icons.fact_check_outlined
+                  : Icons.campaign_outlined,
+              color: color,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  notification.title,
-                  style: const TextStyle(
-                    color: NotificationPage.textDark,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        style: const TextStyle(
+                          color: NotificationPage.textDark,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (notification.isUnread)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        margin: const EdgeInsets.only(top: 5, left: 8),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  notification.message,
+                  notification.body,
                   style: const TextStyle(
                     color: NotificationPage.textMuted,
                     fontSize: 13,
@@ -150,7 +207,7 @@ class _NotificationCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 9),
                 Text(
-                  notification.time,
+                  _relativeTime(notification.createdAt),
                   style: const TextStyle(
                     color: NotificationPage.primaryBlue,
                     fontSize: 12,
@@ -161,6 +218,63 @@ class _NotificationCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  String _relativeTime(DateTime? date) {
+    if (date == null) return 'Terbaru';
+
+    final difference = DateTime.now().difference(date);
+    if (difference.inMinutes < 1) return 'Baru saja';
+    if (difference.inHours < 1) return '${difference.inMinutes} menit lalu';
+    if (difference.inDays < 1) return '${difference.inHours} jam lalu';
+    if (difference.inDays < 7) return '${difference.inDays} hari lalu';
+
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+}
+
+class _ErrorNotification extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorNotification({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: NotificationPage.textMuted,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+          ],
+        ),
       ),
     );
   }
@@ -175,7 +289,7 @@ class _EmptyNotification extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'Belum ada notifikasi akademik.',
+          'Belum ada notifikasi.',
           textAlign: TextAlign.center,
           style: TextStyle(color: NotificationPage.textMuted, fontSize: 14),
         ),
@@ -183,23 +297,3 @@ class _EmptyNotification extends StatelessWidget {
     );
   }
 }
-
-const List<_NotificationItem> _sampleNotifications = [
-  _NotificationItem(
-    icon: Icons.campaign_outlined,
-    title: 'Informasi Akademik',
-    message: 'Pengumuman akademik dari sekolah akan tampil di halaman ini.',
-    time: 'Hari ini',
-    color: Color(0xFF1E88E5),
-    backgroundColor: Color(0xFFEAF5FF),
-  ),
-  _NotificationItem(
-    icon: Icons.event_note_outlined,
-    title: 'Agenda Sekolah',
-    message:
-        'Jadwal kegiatan, ujian, dan informasi kelas bisa dipantau di sini.',
-    time: 'Terbaru',
-    color: Color(0xFF20A67A),
-    backgroundColor: Color(0xFFE5F8F0),
-  ),
-];
