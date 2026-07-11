@@ -46,9 +46,12 @@ class _HomePageState extends State<HomePage> {
 
   // Fungsi untuk melompat ke tab profil jika avatar diklik
   void _goToProfile(int profileIndex) {
-    setState(() {
-      _selectedIndex = profileIndex;
-    });
+    _selectTab(profileIndex);
+  }
+
+  void _selectTab(int index) {
+    if (_selectedIndex == index) return;
+    setState(() => _selectedIndex = index);
   }
 
   Future<void> _refreshHome() async {
@@ -84,16 +87,16 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (isAlumni) {
-      setState(() => _selectedIndex = index);
+      _selectTab(index);
       return;
     }
 
     if (index == 2) {
-      setState(() => _selectedIndex = 2);
+      _selectTab(2);
       return;
     }
 
-    setState(() => _selectedIndex = index);
+    _selectTab(index);
   }
 
   @override
@@ -135,7 +138,9 @@ class _HomePageState extends State<HomePage> {
                   onProfileTap: () => _goToProfile(profileIndex),
                   onRefresh: _refreshHome,
                 ),
-                const ClassRecapListPage(),
+                ClassRecapListPage(
+                  onBack: () => _selectTab(0),
+                ),
                 UserProfilePage(
                   userFuture: _userFuture,
                   authService: _authService,
@@ -174,7 +179,7 @@ class _HomePageState extends State<HomePage> {
 
         return Scaffold(
           backgroundColor: white,
-          body: IndexedStack(index: safeIndex, children: pages),
+          body: _AnimatedTabStack(index: safeIndex, children: pages),
           bottomNavigationBar: _MainBottomNavigation(
             isAlumni: isAlumni,
             isStudent: isStudent,
@@ -183,6 +188,93 @@ class _HomePageState extends State<HomePage> {
             onTap: (index) =>
                 _handleBottomNavTap(context, index, isAlumni, isStudent),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _AnimatedTabStack extends StatefulWidget {
+  final int index;
+  final List<Widget> children;
+
+  const _AnimatedTabStack({required this.index, required this.children});
+
+  @override
+  State<_AnimatedTabStack> createState() => _AnimatedTabStackState();
+}
+
+class _AnimatedTabStackState extends State<_AnimatedTabStack>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  int _currentIndex = 0;
+  int _direction = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.index;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutQuart,
+    );
+    _controller.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimatedTabStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.index != _currentIndex) {
+      _direction = widget.index > _currentIndex ? 1 : -1;
+      _currentIndex = widget.index;
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final slideDistance = constraints.maxWidth * 0.22;
+
+        return AnimatedBuilder(
+          animation: _animation,
+          builder: (context, _) {
+            return Stack(
+              children: List.generate(widget.children.length, (childIndex) {
+                final isCurrent = childIndex == _currentIndex;
+                final offsetX = isCurrent
+                    ? _direction * slideDistance * (1 - _animation.value)
+                    : 0.0;
+
+                return Offstage(
+                  offstage: !isCurrent,
+                  child: IgnorePointer(
+                    ignoring: !isCurrent,
+                    child: TickerMode(
+                      enabled: isCurrent,
+                      child: Transform.translate(
+                        offset: Offset(offsetX, 0),
+                        child: widget.children[childIndex],
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          },
         );
       },
     );
@@ -208,6 +300,7 @@ class _AlumniHomeDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: _HomePageState.primaryBlue,
+      displacement: 12,
       onRefresh: onRefresh,
       child: Column(
         children: [
@@ -219,7 +312,7 @@ class _AlumniHomeDashboard extends StatelessWidget {
           ),
 
           // 2. Sisa layar di bawahnya langsung diisi oleh halaman Lowongan Kerja
-          const Expanded(child: JobVacancyPage()),
+          const Expanded(child: JobVacancyPage(enablePullRefresh: false)),
         ],
       ),
     );
@@ -245,10 +338,11 @@ class _HomeDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: _HomePageState.primaryBlue,
+      displacement: 12,
       onRefresh: onRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
+          parent: ClampingScrollPhysics(),
         ),
         padding: const EdgeInsets.only(bottom: 32),
         child: Column(
@@ -1107,14 +1201,14 @@ class _MenuSection extends StatelessWidget {
                 'Pilih fitur layanan yang ingin Anda gunakan.',
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 0),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
-                  mainAxisSpacing: 24,
+                  mainAxisSpacing: 8,
                   crossAxisSpacing: 16,
                   childAspectRatio: 0.72,
                 ),
