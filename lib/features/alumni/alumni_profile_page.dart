@@ -76,7 +76,7 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
         foregroundColor: Colors.black87,
         title: const Text(
           'Profil Alumni',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         elevation: 0,
         centerTitle: true,
@@ -160,7 +160,7 @@ class _ErrorView extends StatelessWidget {
               'Gagal memuat profil',
               style: TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
                 color: Colors.black87,
               ),
             ),
@@ -219,6 +219,7 @@ class _ProfileContent extends StatelessWidget {
               children: [
                 _buildSection(
                   title: 'Informasi Akun',
+                  fontWeight: FontWeight.w500,
                   icon: Icons.account_circle_outlined,
                   children: [
                     _InfoRow(
@@ -318,7 +319,7 @@ class _ProfileContent extends StatelessWidget {
                 ),
                 
                 _buildSection(
-                  title: 'Status Keanggotaan',
+                  title: 'Status',
                   icon: Icons.verified_outlined,
                   children: [
                     _InfoRow(
@@ -401,7 +402,7 @@ class _ProfileContent extends StatelessWidget {
             style: const TextStyle(
               color: Colors.black87,
               fontSize: 22,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 8),
@@ -416,7 +417,7 @@ class _ProfileContent extends StatelessWidget {
               style: const TextStyle(
                 color: primaryColor,
                 fontSize: 13,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -430,6 +431,7 @@ class _ProfileContent extends StatelessWidget {
     required String title,
     required IconData icon,
     required List<Widget> children,
+    FontWeight fontWeight = FontWeight.w500,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,9 +444,9 @@ class _ProfileContent extends StatelessWidget {
               const SizedBox(width: 12),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: fontWeight,
                   color: Colors.black87,
                 ),
               ),
@@ -520,7 +522,7 @@ class _InfoRow extends StatelessWidget {
                   value,
                   style: const TextStyle(
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                     color: Colors.black87,
                     height: 1.4,
                   ),

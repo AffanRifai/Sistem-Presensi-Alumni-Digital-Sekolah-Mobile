@@ -112,8 +112,8 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
                         const Text(
                           'Lowongan Kerja',
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
                             color: Color(0xFF1A1A1A),
                             letterSpacing: -0.5,
                           ),
@@ -213,7 +213,7 @@ class _JobCard extends StatelessWidget {
                             job.title,
                             style: const TextStyle(
                               fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.w500,
                               color: Colors.black87,
                               letterSpacing: -0.3,
                             ),
@@ -226,7 +226,7 @@ class _JobCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 13,
                               color: Color(0xFF1E88E5),
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -293,7 +293,7 @@ class _JobCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -308,9 +308,9 @@ class _JobCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade100),
+
                         ),
                         child: Column(
                           children: [
@@ -323,7 +323,7 @@ class _JobCard extends StatelessWidget {
                               DateFormat('dd MMM yyyy').format(job.deadline!),
                               style: TextStyle(
                                 fontSize: 11,
-                                fontWeight: FontWeight.w800,
+                                fontWeight: FontWeight.w500,
                                 color: Colors.red.shade700,
                               ),
                             ),
@@ -487,7 +487,7 @@ class _JobCard extends StatelessWidget {
                                   style: TextStyle(
                                     color: Colors.blue.shade700,
                                     decoration: TextDecoration.underline,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

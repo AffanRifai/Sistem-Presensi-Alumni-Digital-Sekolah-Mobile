@@ -1,9 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../features/notification/data/notification_controller.dart';
-import '../navigation/app_navigator.dart';
 import 'api_client.dart';
 
 class FcmService {
@@ -12,6 +10,7 @@ class FcmService {
   static bool _isInitialized = false;
   static const String _channelId = 'attendance_notifications';
   static const String _channelName = 'Presensi Sekolah';
+  static final Set<String> _processedMessageKeys = <String>{};
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -50,12 +49,13 @@ class FcmService {
 
       // 3. Tangani notifikasi saat aplikasi di foreground (aktif dibuka)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        if (_isDuplicateMessage(message)) return;
+
         final title = message.notification?.title ?? 'Notifikasi';
         final body = message.notification?.body ?? '';
 
         NotificationController.instance.handleIncomingPush();
         _showLocalNotification(title, body, message);
-        _showForegroundMessage(title, body);
 
         if (kDebugMode) {
           print('[FcmService] Menerima notifikasi foreground!');
@@ -92,6 +92,9 @@ class FcmService {
       _channelName,
       description: 'Notifikasi presensi siswa dan informasi sekolah.',
       importance: Importance.high,
+
+      sound: RawResourceAndroidNotificationSound('bell'),
+      playSound: true,
     );
 
     await _localNotifications
@@ -139,23 +142,6 @@ class FcmService {
     }
   }
 
-  void _showForegroundMessage(String title, String body) {
-    final context = appNavigatorKey.currentContext;
-    if (context == null) return;
-
-    final message = body.isEmpty ? title : '$title\n$body';
-
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-  }
-
   Future<void> _showLocalNotification(
     String title,
     String body,
@@ -170,8 +156,10 @@ class FcmService {
       channelDescription: 'Notifikasi presensi siswa dan informasi sekolah.',
       importance: Importance.high,
       priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('bell'),
+      playSound: true,
     );
-    const iosDetails = DarwinNotificationDetails();
+    const iosDetails = DarwinNotificationDetails(sound: 'bell.wav');
     const details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
@@ -184,5 +172,23 @@ class FcmService {
       notificationDetails: details,
       payload: message.data.toString(),
     );
+  }
+
+  bool _isDuplicateMessage(RemoteMessage message) {
+    final key =
+        message.data['notification_id']?.toString() ??
+        message.messageId ??
+        '${message.notification?.title ?? ''}|${message.notification?.body ?? ''}';
+
+    if (_processedMessageKeys.contains(key)) {
+      return true;
+    }
+
+    _processedMessageKeys.add(key);
+    if (_processedMessageKeys.length > 100) {
+      _processedMessageKeys.remove(_processedMessageKeys.first);
+    }
+
+    return false;
   }
 }

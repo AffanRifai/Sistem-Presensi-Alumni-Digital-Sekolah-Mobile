@@ -21,7 +21,7 @@ class AlumniEventDetailPage extends StatelessWidget {
         centerTitle: true,
         title: const Text(
           'Detail Event',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -71,7 +71,7 @@ class AlumniEventDetailPage extends StatelessWidget {
                           statusInfo.label,
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: statusInfo.color,
                           ),
                         ),
@@ -93,7 +93,7 @@ class AlumniEventDetailPage extends StatelessWidget {
                                 'Menunggu Persetujuan',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                   color: Colors.orange.shade700,
                                 ),
                               ),
@@ -108,8 +108,8 @@ class AlumniEventDetailPage extends StatelessWidget {
                   Text(
                     event.title,
                     style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
                       color: Color(0xFF1A1A1A),
                       height: 1.3,
                       letterSpacing: -0.5,
@@ -153,7 +153,7 @@ class AlumniEventDetailPage extends StatelessWidget {
                         'Deskripsi Event',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w500,
                           color: Colors.black87,
                         ),
                       ),
@@ -215,7 +215,7 @@ class AlumniEventDetailPage extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   color: Colors.black87,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w500,
                   height: 1.4,
                 ),
               ),

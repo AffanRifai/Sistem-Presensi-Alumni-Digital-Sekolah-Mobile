@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
   final AuthService _authService = AuthService();
   late Future<AuthUser?> _userFuture;
   int _selectedIndex = 0;
+  int _refreshVersion = 0;
 
   @override
   void initState() {
@@ -46,6 +47,24 @@ class _HomePageState extends State<HomePage> {
   void _goToProfile(int profileIndex) {
     setState(() {
       _selectedIndex = profileIndex;
+    });
+  }
+
+  Future<void> _refreshHome() async {
+    AuthUser? refreshedUser;
+
+    try {
+      refreshedUser = await _authService.refreshCurrentUser();
+    } catch (_) {
+      refreshedUser = await _authService.readUser();
+    }
+
+    await NotificationController.instance.refreshUnreadCount();
+
+    if (!mounted) return;
+    setState(() {
+      _refreshVersion++;
+      _userFuture = Future<AuthUser?>.value(refreshedUser);
     });
   }
 
@@ -99,8 +118,10 @@ class _HomePageState extends State<HomePage> {
         final List<Widget> pages = isAlumni
             ? [
                 _AlumniHomeDashboard(
+                  key: ValueKey('alumni-home-$_refreshVersion'),
                   userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
+                  onRefresh: _refreshHome,
                 ), // Index 0: Home (Header Biru + Lowongan Kerja)
                 const AlumniEventPage(), // Index 1: Event Alumni
                 const AlumniProfilePage(), // Index 2: Profil Alumni
@@ -108,8 +129,10 @@ class _HomePageState extends State<HomePage> {
             : isTeacher
             ? [
                 _HomeDashboard(
+                  key: ValueKey('teacher-home-$_refreshVersion'),
                   userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
+                  onRefresh: _refreshHome,
                 ),
                 const ClassRecapListPage(),
                 UserProfilePage(
@@ -120,8 +143,10 @@ class _HomePageState extends State<HomePage> {
             : isStudent
             ? [
                 _HomeDashboard(
+                  key: ValueKey('student-home-$_refreshVersion'),
                   userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
+                  onRefresh: _refreshHome,
                 ),
                 const SizedBox.shrink(),
                 UserProfilePage(
@@ -131,8 +156,10 @@ class _HomePageState extends State<HomePage> {
               ]
             : [
                 _HomeDashboard(
+                  key: ValueKey('default-home-$_refreshVersion'),
                   userFuture: _userFuture,
                   onProfileTap: () => _goToProfile(profileIndex),
+                  onRefresh: _refreshHome,
                 ),
                 UserProfilePage(
                   userFuture: _userFuture,
@@ -167,22 +194,33 @@ class _HomePageState extends State<HomePage> {
 class _AlumniHomeDashboard extends StatelessWidget {
   final Future<AuthUser?> userFuture;
   final VoidCallback onProfileTap;
+  final Future<void> Function() onRefresh;
 
   const _AlumniHomeDashboard({
+    super.key,
     required this.userFuture,
     required this.onProfileTap,
+    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // 1. Header Biru tetap dipertahankan
-        _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
+    return RefreshIndicator(
+      color: _HomePageState.primaryBlue,
+      onRefresh: onRefresh,
+      child: Column(
+        children: [
+          // 1. Header Biru tetap dipertahankan
+          _HeaderSection(
+            userFuture: userFuture,
+            onProfileTap: onProfileTap,
+            onRefresh: onRefresh,
+          ),
 
-        // 2. Sisa layar di bawahnya langsung diisi oleh halaman Lowongan Kerja
-        const Expanded(child: JobVacancyPage()),
-      ],
+          // 2. Sisa layar di bawahnya langsung diisi oleh halaman Lowongan Kerja
+          const Expanded(child: JobVacancyPage()),
+        ],
+      ),
     );
   }
 }
@@ -193,49 +231,65 @@ class _AlumniHomeDashboard extends StatelessWidget {
 class _HomeDashboard extends StatelessWidget {
   final Future<AuthUser?> userFuture;
   final VoidCallback onProfileTap;
+  final Future<void> Function() onRefresh;
 
-  const _HomeDashboard({required this.userFuture, required this.onProfileTap});
+  const _HomeDashboard({
+    super.key,
+    required this.userFuture,
+    required this.onProfileTap,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _HeaderSection(userFuture: userFuture, onProfileTap: onProfileTap),
-          const SizedBox(height: 22),
-          FutureBuilder<AuthUser?>(
-            future: userFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 180,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
+    return RefreshIndicator(
+      color: _HomePageState.primaryBlue,
+      onRefresh: onRefresh,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+        padding: const EdgeInsets.only(bottom: 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _HeaderSection(
+              userFuture: userFuture,
+              onProfileTap: onProfileTap,
+              onRefresh: onRefresh,
+            ),
+            const SizedBox(height: 22),
+            FutureBuilder<AuthUser?>(
+              future: userFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox(
+                    height: 180,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
 
-              if (snapshot.data?.role == 'parent') {
-                return const _ParentTodayAttendanceSection();
-              }
+                if (snapshot.data?.role == 'parent') {
+                  return const _ParentTodayAttendanceSection();
+                }
 
-              if (snapshot.data?.role == 'student') {
-                return Column(
-                  children: [
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _StudentQuickAccessCard(),
-                    ),
-                  ],
-                );
-              }
+                if (snapshot.data?.role == 'student') {
+                  return Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _StudentQuickAccessCard(),
+                      ),
+                    ],
+                  );
+                }
 
-              return _MenuSection(userFuture: userFuture);
-            },
-          ),
-        ],
+                return _MenuSection(userFuture: userFuture);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -247,8 +301,13 @@ class _HomeDashboard extends StatelessWidget {
 class _HeaderSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
   final VoidCallback onProfileTap;
+  final Future<void> Function() onRefresh;
 
-  const _HeaderSection({required this.userFuture, required this.onProfileTap});
+  const _HeaderSection({
+    required this.userFuture,
+    required this.onProfileTap,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -887,7 +946,9 @@ class _StudentAttendanceTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: records.length * 74 + 42, // Perkiraan tinggi tabel berdasarkan jumlah baris
+      height:
+          records.length * 74 +
+          42, // Perkiraan tinggi tabel berdasarkan jumlah baris
       child: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(

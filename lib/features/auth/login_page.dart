@@ -496,8 +496,8 @@ class _LoginPageState extends State<LoginPage> {
                                 'Daftar',
                                 style: TextStyle(
                                   color: buttonColor,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),

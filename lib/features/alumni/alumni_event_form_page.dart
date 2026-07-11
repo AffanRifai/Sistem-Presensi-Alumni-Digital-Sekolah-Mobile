@@ -198,7 +198,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
       appBar: AppBar(
         title: Text(
           _isEditMode ? 'Edit Event' : 'Ajukan Event', 
-          style: const TextStyle(fontWeight: FontWeight.w600)
+          style: const TextStyle(fontWeight: FontWeight.w500)
         ),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -219,8 +219,8 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                     Text(
                       _isEditMode ? 'Perbarui Informasi' : 'Informasi Event',
                       style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
                         color: Color(0xFF1A1A1A),
                         letterSpacing: -0.5,
                       ),
@@ -243,7 +243,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                     // --- Banner Image Picker ---
                     Text(
                       'Banner / Poster Event',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey.shade800),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey.shade800),
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
@@ -391,7 +391,7 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
                       ),
                       child: Text(
                         _isEditMode ? 'Simpan Perubahan' : 'Ajukan Event',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5),
                       ),
                     ),
                     const SizedBox(height: 32),

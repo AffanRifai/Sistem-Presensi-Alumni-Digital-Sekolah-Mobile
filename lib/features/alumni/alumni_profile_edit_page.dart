@@ -157,7 +157,7 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
             title,
             style: const TextStyle(
               fontSize: 18, 
-              fontWeight: FontWeight.bold, 
+              fontWeight: FontWeight.w500, 
               color: Colors.black87,
             ),
           ),
@@ -177,7 +177,7 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
     return Scaffold(
       backgroundColor: Colors.white, // Layout flat dan bersih dengan latar belakang putih penuh
       appBar: AppBar(
-        title: const Text('Profil Alumni', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text('Profil Alumni', style: TextStyle(fontWeight: FontWeight.w500)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
         elevation: 0,
@@ -208,8 +208,8 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
                       child: Text(
                         'Informasi Alumni',
                         style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w500,
                           color: Color(0xFF1A1A1A),
                           letterSpacing: -0.5,
                         ),
@@ -366,7 +366,7 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
                         )
                       : const Text(
                           'Simpan Perubahan',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5),
                         ),
                 ),
                 const SizedBox(height: 32),

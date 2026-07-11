@@ -56,7 +56,7 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
         centerTitle: true,
         title: const Text(
           'Event Alumni',
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: TextStyle(fontWeight: FontWeight.w500),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -200,7 +200,7 @@ class _ErrorView extends StatelessWidget {
             const SizedBox(height: 24),
             const Text(
               'Gagal Memuat Event',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
             ),
             const SizedBox(height: 8),
             Text(
@@ -248,7 +248,7 @@ class _EmptyView extends StatelessWidget {
             const SizedBox(height: 24),
             const Text(
               'Belum Ada Event',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
             ),
             const SizedBox(height: 8),
             Text(
@@ -374,7 +374,7 @@ class _EventCard extends StatelessWidget {
                           statusInfo.label,
                           style: TextStyle(
                             fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w500,
                             color: statusInfo.color,
                           ),
                         ),
@@ -397,7 +397,7 @@ class _EventCard extends StatelessWidget {
                                 'Menunggu Persetujuan',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                   color: Colors.orange.shade700,
                                 ),
                               ),
@@ -452,7 +452,7 @@ class _EventCard extends StatelessWidget {
               event.title,
               style: const TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w500,
                 color: Colors.black87,
                 height: 1.3,
                 letterSpacing: -0.3,
