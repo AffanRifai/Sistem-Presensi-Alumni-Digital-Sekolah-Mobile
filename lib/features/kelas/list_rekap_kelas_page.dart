@@ -7,7 +7,9 @@ import 'detail_rekap_kelas_page.dart';
 import 'kelas_theme.dart';
 
 class ClassRecapListPage extends StatefulWidget {
-  const ClassRecapListPage({super.key});
+  final VoidCallback? onBack;
+
+  const ClassRecapListPage({super.key, this.onBack});
 
   @override
   State<ClassRecapListPage> createState() => _ClassRecapListPageState();
@@ -113,6 +115,7 @@ class _ClassRecapListPageState extends State<ClassRecapListPage> {
             totalClasses: _classes.length,
             totalStudents: _totalStudents,
             onRefresh: _loadClasses,
+            onBack: widget.onBack,
           ),
           if (showFilters) ...[
             const SizedBox(height: 14),
@@ -197,12 +200,14 @@ class _Header extends StatelessWidget {
   final int totalClasses;
   final int totalStudents;
   final VoidCallback onRefresh;
+  final VoidCallback? onBack;
 
   const _Header({
     required this.isLoading,
     required this.totalClasses,
     required this.totalStudents,
     required this.onRefresh,
+    required this.onBack,
   });
 
   @override
@@ -218,7 +223,7 @@ class _Header extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: onBack ?? () => Navigator.pop(context),
                 ),
                 const Expanded(
                   child: Text(

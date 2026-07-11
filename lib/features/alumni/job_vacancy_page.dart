@@ -5,7 +5,9 @@ import 'data/job_vacancy_service.dart';
 import '../../core/config/api_config.dart';
 
 class JobVacancyPage extends StatefulWidget {
-  const JobVacancyPage({super.key});
+  final bool enablePullRefresh;
+
+  const JobVacancyPage({super.key, this.enablePullRefresh = true});
 
   @override
   State<JobVacancyPage> createState() => _JobVacancyPageState();
@@ -38,7 +40,9 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
         future: _jobsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: primaryColor));
+            return const Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
           }
           if (snapshot.hasError) {
             return Center(
@@ -47,21 +51,37 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-                    child: const Icon(Icons.error_outline, size: 48, color: Color(0xFFE57373)),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: Color(0xFFE57373),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Text('Gagal memuat lowongan\n${snapshot.error}', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+                  Text(
+                    'Gagal memuat lowongan\n${snapshot.error}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _loadJobs,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Coba Lagi',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryColor,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ],
@@ -78,13 +98,24 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-                    child: Icon(Icons.work_off_outlined, size: 64, color: Colors.grey.shade400),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.work_off_outlined,
+                      size: 64,
+                      color: Colors.grey.shade400,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'Belum Ada Lowongan',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -96,55 +127,64 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
             );
           }
 
+          final content = CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: ClampingScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Lowongan Kerja',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Temukan peluang karir dan pekerjaan terbaik untukmu.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _JobCard(job: jobs[index]),
+                    );
+                  }, childCount: jobs.length),
+                ),
+              ),
+              // Padding ekstra di bawah agar tidak tertutup Bottom Navigation Bar
+              const SliverToBoxAdapter(child: SizedBox(height: 80)),
+            ],
+          );
+
+          if (!widget.enablePullRefresh) {
+            return content;
+          }
+
           return RefreshIndicator(
             color: primaryColor,
+            displacement: 12,
             onRefresh: () async => _loadJobs(),
             // Menggunakan CustomScrollView agar Header dan List bisa discroll bersamaan
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Lowongan Kerja',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF1A1A1A),
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Temukan peluang karir dan pekerjaan terbaik untukmu.',
-                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _JobCard(job: jobs[index]),
-                        );
-                      },
-                      childCount: jobs.length,
-                    ),
-                  ),
-                ),
-                // Padding ekstra di bawah agar tidak tertutup Bottom Navigation Bar
-                const SliverToBoxAdapter(child: SizedBox(height: 80)),
-              ],
-            ),
+            child: content,
           );
         },
       ),
@@ -165,7 +205,10 @@ class _JobCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200, width: 1.2), // Layout flat dengan border
+        border: Border.all(
+          color: Colors.grey.shade200,
+          width: 1.2,
+        ), // Layout flat dengan border
       ),
       child: Material(
         color: Colors.transparent,
@@ -191,7 +234,8 @@ class _JobCard extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: Colors.grey.shade200),
                       ),
-                      child: job.companyLogo != null && job.companyLogo!.isNotEmpty
+                      child:
+                          job.companyLogo != null && job.companyLogo!.isNotEmpty
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(14),
                               child: Image.network(
@@ -199,7 +243,11 @@ class _JobCard extends StatelessWidget {
                                     ? job.companyLogo!
                                     : '${ApiConfig.storageUrl}/${job.companyLogo}',
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => Icon(Icons.business, color: Colors.grey.shade400),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(
+                                      Icons.business,
+                                      color: Colors.grey.shade400,
+                                    ),
                               ),
                             )
                           : Icon(Icons.business, color: Colors.grey.shade400),
@@ -237,7 +285,7 @@ class _JobCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Info badges
                 Wrap(
                   spacing: 8,
@@ -255,12 +303,12 @@ class _JobCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 14),
                   child: Divider(height: 1),
                 ),
-                
+
                 // Info footer (Lokasi & Gaji)
                 Row(
                   children: [
@@ -270,12 +318,20 @@ class _JobCard extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade500),
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 14,
+                                color: Colors.grey.shade500,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   job.location,
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w500),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -285,7 +341,11 @@ class _JobCard extends StatelessWidget {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.monetization_on_outlined, size: 14, color: Colors.green.shade600),
+                              Icon(
+                                Icons.monetization_on_outlined,
+                                size: 14,
+                                color: Colors.green.shade600,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -306,17 +366,23 @@ class _JobCard extends StatelessWidget {
                     ),
                     if (job.deadline != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-
                         ),
                         child: Column(
                           children: [
                             Text(
                               'Batas Akhir',
-                              style: TextStyle(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -380,9 +446,14 @@ class _JobCard extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                          border: Border.all(
+                            color: Colors.grey.shade200,
+                            width: 1.5,
+                          ),
                         ),
-                        child: job.companyLogo != null && job.companyLogo!.isNotEmpty
+                        child:
+                            job.companyLogo != null &&
+                                job.companyLogo!.isNotEmpty
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(18),
                                 child: Image.network(
@@ -390,88 +461,183 @@ class _JobCard extends StatelessWidget {
                                       ? job.companyLogo!
                                       : '${ApiConfig.storageUrl}/${job.companyLogo}',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) => Icon(Icons.business, color: Colors.grey.shade400, size: 40),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(
+                                        Icons.business,
+                                        color: Colors.grey.shade400,
+                                        size: 40,
+                                      ),
                                 ),
                               )
-                            : Icon(Icons.business, color: Colors.grey.shade400, size: 40),
+                            : Icon(
+                                Icons.business,
+                                color: Colors.grey.shade400,
+                                size: 40,
+                              ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Text(
                       job.title,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: Colors.black87),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                        color: Colors.black87,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       job.companyName,
-                      style: const TextStyle(fontSize: 16, color: Color(0xFF1E88E5), fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF1E88E5),
+                        fontWeight: FontWeight.w600,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 32),
-                    
+
                     // Quick Info Grid
                     Row(
                       children: [
-                        Expanded(child: _InfoBox(icon: Icons.location_on_outlined, label: 'Lokasi', value: job.location, color: Colors.blue)),
+                        Expanded(
+                          child: _InfoBox(
+                            icon: Icons.location_on_outlined,
+                            label: 'Lokasi',
+                            value: job.location,
+                            color: Colors.blue,
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _InfoBox(icon: Icons.monetization_on_outlined, label: 'Gaji', value: job.formattedSalary, color: Colors.green)),
+                        Expanded(
+                          child: _InfoBox(
+                            icon: Icons.monetization_on_outlined,
+                            label: 'Gaji',
+                            value: job.formattedSalary,
+                            color: Colors.green,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Expanded(child: _InfoBox(icon: Icons.work_outline, label: 'Tipe', value: _formatJobType(job.jobType), color: Colors.orange)),
+                        Expanded(
+                          child: _InfoBox(
+                            icon: Icons.work_outline,
+                            label: 'Tipe',
+                            value: _formatJobType(job.jobType),
+                            color: Colors.orange,
+                          ),
+                        ),
                         const SizedBox(width: 12),
-                        Expanded(child: _InfoBox(icon: Icons.calendar_today_outlined, label: 'Batas Akhir', value: job.deadline != null ? DateFormat('dd MMM yyyy').format(job.deadline!) : 'Tidak ada', color: Colors.red)),
+                        Expanded(
+                          child: _InfoBox(
+                            icon: Icons.calendar_today_outlined,
+                            label: 'Batas Akhir',
+                            value: job.deadline != null
+                                ? DateFormat(
+                                    'dd MMM yyyy',
+                                  ).format(job.deadline!)
+                                : 'Tidak ada',
+                            color: Colors.red,
+                          ),
+                        ),
                       ],
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
-                    const Text('Deskripsi Pekerjaan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+
+                    const Text(
+                      'Deskripsi Pekerjaan',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Text(
-                      job.description.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
-                      style: TextStyle(fontSize: 14.5, color: Colors.grey.shade800, height: 1.6),
+                      job.description.replaceAll(
+                        RegExp(r'<[^>]*>|&[^;]+;'),
+                        '',
+                      ),
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        color: Colors.grey.shade800,
+                        height: 1.6,
+                      ),
                     ),
-                    
+
                     const SizedBox(height: 24),
                     const Divider(height: 1),
                     const SizedBox(height: 24),
-                    
-                    if (job.requirements != null && job.requirements!.isNotEmpty) ...[
-                      const Text('Persyaratan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+
+                    if (job.requirements != null &&
+                        job.requirements!.isNotEmpty) ...[
+                      const Text(
+                        'Persyaratan',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Text(
-                        job.requirements!.replaceAll(RegExp(r'<[^>]*>|&[^;]+;'), ''),
-                        style: TextStyle(fontSize: 14.5, color: Colors.grey.shade800, height: 1.6),
+                        job.requirements!.replaceAll(
+                          RegExp(r'<[^>]*>|&[^;]+;'),
+                          '',
+                        ),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          color: Colors.grey.shade800,
+                          height: 1.6,
+                        ),
                       ),
                       const SizedBox(height: 32),
                     ],
-                    
+
                     if (job.link != null && job.link!.isNotEmpty) ...[
-                      const Text('Tautan Eksternal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      const Text(
+                        'Tautan Eksternal',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       InkWell(
                         onTap: () async {
                           String linkString = job.link!;
-                          if (!linkString.startsWith('http://') && !linkString.startsWith('https://')) {
+                          if (!linkString.startsWith('http://') &&
+                              !linkString.startsWith('https://')) {
                             linkString = 'https://$linkString';
                           }
                           final uri = Uri.tryParse(linkString);
                           if (uri != null) {
-                            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            final launched = await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
                             if (!launched && context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Tidak dapat membuka tautan')),
+                                const SnackBar(
+                                  content: Text('Tidak dapat membuka tautan'),
+                                ),
                               );
                             }
                           }
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(16),
@@ -493,7 +659,11 @@ class _JobCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              Icon(Icons.open_in_new, size: 18, color: Colors.blue.shade700),
+                              Icon(
+                                Icons.open_in_new,
+                                size: 18,
+                                color: Colors.blue.shade700,
+                              ),
                             ],
                           ),
                         ),
@@ -511,7 +681,7 @@ class _JobCard extends StatelessWidget {
   }
 
   Color _getJobTypeColor(String type) {
-    return switch(type.toLowerCase()) {
+    return switch (type.toLowerCase()) {
       'full_time' => Colors.blue,
       'part_time' => Colors.orange,
       'freelance' => Colors.teal,
@@ -521,7 +691,7 @@ class _JobCard extends StatelessWidget {
   }
 
   String _formatJobType(String type) {
-    return switch(type.toLowerCase()) {
+    return switch (type.toLowerCase()) {
       'full_time' => 'Full Time',
       'part_time' => 'Part Time',
       'freelance' => 'Freelance',
@@ -529,9 +699,9 @@ class _JobCard extends StatelessWidget {
       _ => type,
     };
   }
-  
+
   String _formatCategory(String category) {
-    return switch(category.toLowerCase()) {
+    return switch (category.toLowerCase()) {
       'technology' => 'Teknologi',
       'education' => 'Pendidikan',
       'health' => 'Kesehatan',
@@ -567,7 +737,11 @@ class _Badge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -581,7 +755,12 @@ class _InfoBox extends StatelessWidget {
   final String value;
   final MaterialColor color;
 
-  const _InfoBox({required this.icon, required this.label, required this.value, required this.color});
+  const _InfoBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -597,11 +776,22 @@ class _InfoBox extends StatelessWidget {
         children: [
           Icon(icon, size: 24, color: color.shade600),
           const SizedBox(height: 12),
-          Text(label, style: TextStyle(fontSize: 12, color: color.shade700, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
