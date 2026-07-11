@@ -15,6 +15,7 @@ import '../siswa/data/student_attendance_models.dart';
 import '../siswa/data/student_attendance_service.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
+import '../jadwal_mengajar/jadwal_mengajar_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -1040,6 +1041,12 @@ class _MenuSection extends StatelessWidget {
 
   static const List<_MenuItemData> _items = [
     _MenuItemData(
+      icon: Icons.schedule_outlined,
+      label: 'Jadwal Mengajar',
+      backgroundColor: Color(0xFFE3F2FD),
+      iconColor: Color(0xFF1E88E5),
+    ),
+    _MenuItemData(
       icon: Icons.event_available_outlined,
       label: 'Presensi Siswa',
       backgroundColor: Color(0xFFFFDDE8),
@@ -1151,6 +1158,7 @@ class _MenuSection extends StatelessWidget {
     }
 
     final Widget page = switch (item.label) {
+      'Jadwal Mengajar' => const JadwalMengajarPage(),
       'Lihat Kelas Anda' => const ClassRecapListPage(),
       'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
       _ => const SelectClassDatePage(mode: PresensiEntryMode.manual),
