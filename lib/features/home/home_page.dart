@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
@@ -137,9 +140,7 @@ class _HomePageState extends State<HomePage> {
                   onProfileTap: () => _goToProfile(profileIndex),
                   onRefresh: _refreshHome,
                 ),
-                ClassRecapListPage(
-                  onBack: () => _selectTab(0),
-                ),
+                ClassRecapListPage(onBack: () => _selectTab(0)),
                 UserProfilePage(
                   userFuture: _userFuture,
                   authService: _authService,
@@ -352,7 +353,9 @@ class _HomeDashboard extends StatelessWidget {
               onProfileTap: onProfileTap,
               onRefresh: onRefresh,
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 20),
+            const _DashboardBannerCarousel(),
+            const SizedBox(height: 2),
             FutureBuilder<AuthUser?>(
               future: userFuture,
               builder: (context, snapshot) {
@@ -409,202 +412,371 @@ class _HeaderSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, topPadding + 24, 24, 40),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 14, 20, 18),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-        ),
+        color: _HomePageState.primaryBlue,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
         ),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Background Icon Pattern
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Transform.rotate(
-              angle: -0.2,
-              child: const Icon(
-                Icons.auto_stories_rounded,
-                size: 140,
-                color: Colors.white10,
-              ),
-            ),
-          ),
+      child: FutureBuilder<AuthUser?>(
+        future: userFuture,
+        builder: (context, snapshot) {
+          final user = snapshot.data;
 
-          // Main Content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          return Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // --- AVATAR YANG BISA DIKLIK ---
-                  GestureDetector(
-                    onTap: onProfileTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.2),
+              GestureDetector(
+                onTap: onProfileTap,
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: const Color(0xFF0D47A1),
+                  child: Text(
+                    _getInitials(user?.name),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Halo, ${user?.name ?? 'Pengguna'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
                       ),
-                      child: const CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 30,
-                          color: Color(0xFF1E88E5),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.24),
+                        ),
+                      ),
+                      child: Text(
+                        _formatRole(user?.role),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FutureBuilder<AuthUser?>(
-                      future: userFuture,
-                      builder: (context, snapshot) {
-                        final user = snapshot.data;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Halo, ${user?.name ?? 'Pengguna'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              AnimatedBuilder(
+                animation: NotificationController.instance,
+                builder: (context, _) {
+                  final unreadCount =
+                      NotificationController.instance.unreadCount;
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationPage(),
+                            ),
+                          );
+                          NotificationController.instance.refreshUnreadCount();
+                        },
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Colors.white,
+                        ),
+                        tooltip: 'Notifikasi',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.14),
+                          padding: const EdgeInsets.all(10),
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _formatRole(user?.role),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  AnimatedBuilder(
-                    animation: NotificationController.instance,
-                    builder: (context, _) {
-                      final unreadCount =
-                          NotificationController.instance.unreadCount;
-
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const NotificationPage(),
-                                ),
-                              );
-                              NotificationController.instance
-                                  .refreshUnreadCount();
-                            },
-                            icon: const Icon(
-                              Icons.notifications_none_rounded,
-                              color: Colors.white,
-                            ),
-                            tooltip: 'Notifikasi',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.15,
-                              ),
-                              padding: const EdgeInsets.all(10),
                             ),
                           ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Text(
-                                  unreadCount > 99
-                                      ? '99+'
-                                      : unreadCount.toString(),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              const Text(
-                'Sistem Digital Sekolah',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  height: 1.2,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Informasi akademik dan layanan sekolah tersedia dalam satu dashboard.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 14,
-                  height: 1.4,
-                ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _getInitials(String? name) {
+    final parts = (name ?? '').trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'PG';
+    final first = parts.first[0];
+    final second = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
+    return '$first$second'.toUpperCase();
+  }
+}
+
+class _DashboardBannerData {
+  final String title;
+  final String subtitle;
+  final String imageUrl;
+
+  const _DashboardBannerData({
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+  });
+}
+
+class _DashboardBannerCarousel extends StatefulWidget {
+  const _DashboardBannerCarousel();
+
+  @override
+  State<_DashboardBannerCarousel> createState() =>
+      _DashboardBannerCarouselState();
+}
+
+class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
+  static const List<_DashboardBannerData> _banners = [
+    _DashboardBannerData(
+      title: 'Presensi Lebih Tertata',
+      subtitle: 'Pantau kehadiran siswa langsung dari dashboard.',
+      imageUrl:
+          'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+    ),
+    _DashboardBannerData(
+      title: 'Rekap Kelas Siap Dipantau',
+      subtitle: 'Lihat ringkasan kelas dan data akademik lebih cepat.',
+      imageUrl:
+          'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80',
+    ),
+    _DashboardBannerData(
+      title: 'Aktivitas Sekolah Digital',
+      subtitle: 'Semua informasi penting tersaji dalam satu aplikasi.',
+      imageUrl:
+          'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80',
+    ),
+  ];
+
+  late final PageController _pageController;
+  Timer? _timer;
+  int _activeIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.9);
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+
+      final nextIndex = (_activeIndex + 1) % _banners.length;
+      _pageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  void _handlePageChanged(int index) {
+    setState(() => _activeIndex = index);
+    _startAutoSlide();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 132,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _banners.length,
+            onPageChanged: _handlePageChanged,
+            itemBuilder: (context, index) {
+              final banner = _banners[index];
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: _DashboardBannerCard(banner: banner),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_banners.length, (index) {
+            final isActive = index == _activeIndex;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: isActive ? 18 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? _HomePageState.primaryBlue
+                    : const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardBannerCard extends StatelessWidget {
+  final _DashboardBannerData banner;
+
+  const _DashboardBannerCard({required this.banner});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            banner.imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: _HomePageState.primaryBlue.withValues(alpha: 0.12),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.image_not_supported_outlined,
+                  color: _HomePageState.primaryBlue,
+                ),
+              );
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+
+              return Container(
+                color: const Color(0xFFEFF6FF),
+                alignment: Alignment.center,
+                child: const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              );
+            },
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [
+                  Colors.black.withValues(alpha: 0.62),
+                  Colors.black.withValues(alpha: 0.2),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 18,
+            right: 18,
+            bottom: 18,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  banner.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  banner.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12.5,
+                    height: 1.3,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -898,17 +1070,10 @@ class _ParentInfoCardEmpty extends StatelessWidget {
 }
 
 class _MenuItemData {
-  final IconData icon;
+  final String iconAsset;
   final String label;
-  final Color backgroundColor;
-  final Color iconColor;
 
-  const _MenuItemData({
-    required this.icon,
-    required this.label,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
+  const _MenuItemData({required this.iconAsset, required this.label});
 }
 
 class _StudentQuickAccessCard extends StatefulWidget {
@@ -1134,34 +1299,24 @@ class _MenuSection extends StatelessWidget {
 
   static const List<_MenuItemData> _items = [
     _MenuItemData(
-      icon: Icons.event_available_outlined,
+      iconAsset: 'assets/icons/home/presensi_siswa.svg',
       label: 'Presensi Siswa',
-      backgroundColor: Color(0xFFFFDDE8),
-      iconColor: Color(0xFFE84393),
     ),
     _MenuItemData(
-      icon: Icons.assignment_outlined,
+      iconAsset: 'assets/icons/home/kelas_guru.svg',
       label: 'Lihat Kelas Anda',
-      backgroundColor: Color(0xFFFFE9CD),
-      iconColor: Color(0xFFF39C12),
     ),
     _MenuItemData(
-      icon: Icons.history_outlined,
+      iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
       label: 'Riwayat Kehadiran',
-      backgroundColor: Color(0xFFFFD6D9),
-      iconColor: Color(0xFFE53935),
     ),
     _MenuItemData(
-      icon: Icons.qr_code_scanner_outlined,
+      iconAsset: 'assets/icons/home/presensi_qr.svg',
       label: 'Presensi QR',
-      backgroundColor: Color(0xFFD4FFF2),
-      iconColor: Color(0xFF20C997),
     ),
     _MenuItemData(
-      icon: Icons.analytics_outlined,
+      iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
       label: 'Lihat Kehadiran Siswa',
-      backgroundColor: Color(0xFFDDEBFF),
-      iconColor: Color(0xFF2F80ED),
     ),
   ];
 
@@ -1176,34 +1331,19 @@ class _MenuSection extends StatelessWidget {
             .toList();
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Menu Utama',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A1A),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Pilih fitur layanan yang ingin Anda gunakan.',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 0),
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.72,
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 18,
+                  crossAxisSpacing: 18,
+                  childAspectRatio: 0.92,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -1213,6 +1353,7 @@ class _MenuSection extends StatelessWidget {
                   );
                 },
               ),
+              if (role == 'teacher') ...[const SizedBox(height: 18)],
             ],
           ),
         );
@@ -1264,38 +1405,47 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      highlightColor: item.backgroundColor.withValues(alpha: 0.3),
-      splashColor: item.backgroundColor.withValues(alpha: 0.5),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: item.backgroundColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(item.icon, color: item.iconColor, size: 32),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Text(
+      borderRadius: BorderRadius.circular(22),
+      highlightColor: _HomePageState.primaryBlue.withValues(alpha: 0.08),
+      splashColor: _HomePageState.primaryBlue.withValues(alpha: 0.12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _EducationMenuIcon(item: item),
+            const SizedBox(height: 12),
+            Text(
               item.label,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
-                height: 1.2,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
+                fontSize: 15,
+                height: 1.24,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF2F2F2F),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _EducationMenuIcon extends StatelessWidget {
+  final _MenuItemData item;
+
+  const _EducationMenuIcon({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      item.iconAsset,
+      width: 76,
+      height: 72,
+      fit: BoxFit.contain,
     );
   }
 }

@@ -250,7 +250,7 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
                             fontWeight: FontWeight.w500,
                           ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           elevation: 0,
                         ),
@@ -380,14 +380,14 @@ class _DatePickerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFD9E2EC)),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color.fromARGB(255, 168, 170, 173)),
         ),
         child: Row(
           children: [
@@ -429,15 +429,15 @@ class _ClassTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(8),
           child: Container(
             width: double.infinity,
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: selected ? Colors.black54 : const Color(0xFFD9E2EC),
                 width: selected ? 1.6 : 1,
