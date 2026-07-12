@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
@@ -18,6 +19,7 @@ import '../siswa/data/student_attendance_models.dart';
 import '../siswa/data/student_attendance_service.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
+import '../jadwal_mengajar/jadwal_mengajar_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -322,7 +324,7 @@ class _AlumniHomeDashboard extends StatelessWidget {
 // ============================================================================
 // WIDGET KHUSUS SISWA / GURU (HEADER BIRU + MENU KOTAK)
 // ============================================================================
-class _HomeDashboard extends StatelessWidget {
+class _HomeDashboard extends StatefulWidget {
   final Future<AuthUser?> userFuture;
   final VoidCallback onProfileTap;
   final Future<void> Function() onRefresh;
@@ -335,11 +337,18 @@ class _HomeDashboard extends StatelessWidget {
   });
 
   @override
+  State<_HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<_HomeDashboard> {
+  String _serviceQuery = '';
+
+  @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: _HomePageState.primaryBlue,
       displacement: 12,
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: ClampingScrollPhysics(),
@@ -349,15 +358,35 @@ class _HomeDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _HeaderSection(
-              userFuture: userFuture,
-              onProfileTap: onProfileTap,
-              onRefresh: onRefresh,
+              userFuture: widget.userFuture,
+              onProfileTap: widget.onProfileTap,
+              onRefresh: widget.onRefresh,
             ),
-            const SizedBox(height: 20),
-            const _DashboardBannerCarousel(),
-            const SizedBox(height: 2),
+            const SizedBox(height: 18),
             FutureBuilder<AuthUser?>(
-              future: userFuture,
+              future: widget.userFuture,
+              builder: (context, snapshot) {
+                if (snapshot.data?.role != 'teacher') {
+                  return const SizedBox.shrink();
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _ServiceSearchField(
+                    onChanged: (value) {
+                      setState(
+                        () => _serviceQuery = value.trim().toLowerCase(),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 18),
+            const _DashboardBannerCarousel(),
+            const SizedBox(height: 24),
+            FutureBuilder<AuthUser?>(
+              future: widget.userFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
@@ -367,7 +396,13 @@ class _HomeDashboard extends StatelessWidget {
                 }
 
                 if (snapshot.data?.role == 'parent') {
-                  return const _ParentTodayAttendanceSection();
+                  return const Column(
+                    children: [
+                      _ParentTodayAttendanceSection(),
+                      SizedBox(height: 24),
+                      _EducationInformationSection(),
+                    ],
+                  );
                 }
 
                 if (snapshot.data?.role == 'student') {
@@ -378,14 +413,58 @@ class _HomeDashboard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: _StudentQuickAccessCard(),
                       ),
+                      const SizedBox(height: 24),
+                      const _EducationInformationSection(),
                     ],
                   );
                 }
 
-                return _MenuSection(userFuture: userFuture);
+                return Column(
+                  children: [
+                    _MenuSection(
+                      userFuture: widget.userFuture,
+                      searchQuery: _serviceQuery,
+                    ),
+                    const SizedBox(height: 28),
+                    const _EducationInformationSection(),
+                  ],
+                );
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceSearchField extends StatelessWidget {
+  final ValueChanged<String> onChanged;
+
+  const _ServiceSearchField({required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      onChanged: onChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Cari layanan...',
+        hintStyle: const TextStyle(color: Color(0xFF8A8A8A)),
+        prefixIcon: const Icon(Icons.search, color: _HomePageState.primaryBlue),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD5D5D5)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(
+            color: _HomePageState.primaryBlue,
+            width: 1.4,
+          ),
         ),
       ),
     );
@@ -412,13 +491,10 @@ class _HeaderSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(20, topPadding + 14, 20, 18),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 12),
       decoration: const BoxDecoration(
-        color: _HomePageState.primaryBlue,
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(22),
-          bottomRight: Radius.circular(22),
-        ),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
       ),
       child: FutureBuilder<AuthUser?>(
         future: userFuture,
@@ -429,9 +505,14 @@ class _HeaderSection extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: onProfileTap,
-                child: CircleAvatar(
-                  radius: 24,
-                  backgroundColor: const Color(0xFF0D47A1),
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _HomePageState.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
                     _getInitials(user?.name),
                     style: const TextStyle(
@@ -453,35 +534,32 @@ class _HeaderSection extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 17,
+                        color: Color(0xFF1F2937),
+                        fontSize: 18,
                         height: 1.2,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.2,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        text: 'Selamat datang, ',
+                        children: [
+                          TextSpan(
+                            text: _formatRole(user?.role),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.24),
-                        ),
-                      ),
-                      child: Text(
-                        _formatRole(user?.role),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 13,
                       ),
                     ),
                   ],
@@ -509,11 +587,11 @@ class _HeaderSection extends StatelessWidget {
                         },
                         icon: const Icon(
                           Icons.notifications_none_rounded,
-                          color: Colors.white,
+                          color: Color(0xFF374151),
                         ),
                         tooltip: 'Notifikasi',
                         style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withValues(alpha: 0.14),
+                          backgroundColor: const Color(0xFFF3F4F6),
                           padding: const EdgeInsets.all(10),
                         ),
                       ),
@@ -618,7 +696,7 @@ class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.9);
+    _pageController = PageController(viewportFraction: 0.91);
     _startAutoSlide();
   }
 
@@ -653,7 +731,7 @@ class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 132,
+          height: 144,
           child: PageView.builder(
             controller: _pageController,
             itemCount: _banners.length,
@@ -662,7 +740,7 @@ class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
               final banner = _banners[index];
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: _DashboardBannerCard(banner: banner),
               );
             },
@@ -677,13 +755,13 @@ class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
             return AnimatedContainer(
               duration: const Duration(milliseconds: 220),
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: isActive ? 18 : 6,
+              width: isActive ? 16 : 6,
               height: 6,
               decoration: BoxDecoration(
                 color: isActive
                     ? _HomePageState.primaryBlue
                     : const Color(0xFFD1D5DB),
-                borderRadius: BorderRadius.circular(99),
+                borderRadius: BorderRadius.circular(3),
               ),
             );
           }),
@@ -701,7 +779,7 @@ class _DashboardBannerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(10),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -779,6 +857,176 @@ class _DashboardBannerCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EducationInformationData {
+  final String title;
+  final String source;
+  final String date;
+  final String imageUrl;
+  final String articleUrl;
+
+  const _EducationInformationData({
+    required this.title,
+    required this.source,
+    required this.date,
+    required this.imageUrl,
+    required this.articleUrl,
+  });
+}
+
+class _EducationInformationSection extends StatelessWidget {
+  const _EducationInformationSection();
+
+  static const List<_EducationInformationData> _articles = [
+    _EducationInformationData(
+      title: 'Standar Proses Baru Mendukung Pembelajaran Mendalam',
+      source: 'Kemendikdasmen',
+      date: '9 Juli 2026',
+      imageUrl:
+          'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80',
+      articleUrl:
+          'https://bbpmpjatim.kemendikdasmen.go.id/main/standar-proses-baru-jadi-dasar-penerapan-pembelajaran-mendalam-pada-seluruh-jenjang-pendidikan/',
+    ),
+    _EducationInformationData(
+      title: 'Sekolah Aman dan Nyaman bagi Guru serta Siswa',
+      source: 'Kemendikdasmen',
+      date: '3 April 2026',
+      imageUrl:
+          'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80',
+      articleUrl:
+          'https://www.kemendikdasmen.go.id/siaran-pers/14998-mendikdasmen-sekolah-harus-jadi-ruang-aman-dan-nyaman-yang-m',
+    ),
+    _EducationInformationData(
+      title: 'Digitalisasi Membuat Pembelajaran Lebih Interaktif',
+      source: 'Kemendikdasmen',
+      date: '5 Mei 2026',
+      imageUrl:
+          'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
+      articleUrl:
+          'https://www.kemendikdasmen.go.id/siaran-pers/15302-revitalisasi-dan-digitalisasi-ubah-wajah-sma-pasundan-3-band',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Pendidikan',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Kabar dan wawasan terbaru dari sumber pendidikan resmi.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 14),
+          ..._articles.map(
+            (article) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _EducationInformationCard(article: article),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EducationInformationCard extends StatelessWidget {
+  final _EducationInformationData article;
+
+  const _EducationInformationCard({required this.article});
+
+  Future<void> _openArticle() async {
+    final uri = Uri.parse(article.articleUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: _openArticle,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(
+                  article.imageUrl,
+                  width: 108,
+                  height: 78,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 108,
+                    height: 78,
+                    color: const Color(0xFFF3F4F6),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.school_outlined,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      article.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${article.source} · ${article.date}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.open_in_new,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1294,29 +1542,34 @@ class _StudentAttendanceTable extends StatelessWidget {
 
 class _MenuSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
+  final String searchQuery;
 
-  const _MenuSection({required this.userFuture});
+  const _MenuSection({required this.userFuture, this.searchQuery = ''});
 
   static const List<_MenuItemData> _items = [
     _MenuItemData(
-      iconAsset: 'assets/icons/home/presensi_siswa.svg',
+      iconAsset: 'assets/icons/home/presensi_siswa.png',
       label: 'Presensi Siswa',
     ),
     _MenuItemData(
-      iconAsset: 'assets/icons/home/kelas_guru.svg',
-      label: 'Lihat Kelas Anda',
+      iconAsset: 'assets/icons/home/jadwal.svg',
+      label: 'Jadwal Mengajar',
+    ),
+    _MenuItemData(
+      iconAsset: 'assets/icons/home/kelas.svg',
+      label: 'Kelas Siswa',
     ),
     _MenuItemData(
       iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
       label: 'Riwayat Kehadiran',
     ),
     _MenuItemData(
-      iconAsset: 'assets/icons/home/presensi_qr.svg',
+      iconAsset: 'assets/icons/home/presensi_qr.png',
       label: 'Presensi QR',
     ),
     _MenuItemData(
       iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
-      label: 'Lihat Kehadiran Siswa',
+      label: 'Kehadiran Siswa',
     ),
   ];
 
@@ -1328,6 +1581,7 @@ class _MenuSection extends StatelessWidget {
         final role = snapshot.data?.role;
         final items = _items
             .where((item) => _isMenuVisibleForRole(item.label, role))
+            .where((item) => item.label.toLowerCase().contains(searchQuery))
             .toList();
 
         return Padding(
@@ -1335,25 +1589,44 @@ class _MenuSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 18,
-                  crossAxisSpacing: 18,
-                  childAspectRatio: 0.92,
+              const Text(
+                'Layanan Sekolah',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F2937),
                 ),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return _MenuTile(
-                    item: item,
-                    onTap: () => _handleMenuTap(context, item),
-                  );
-                },
               ),
-              if (role == 'teacher') ...[const SizedBox(height: 18)],
+              const SizedBox(height: 16),
+              if (items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: Text(
+                      'Layanan tidak ditemukan.',
+                      style: TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                  ),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.92,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return _MenuTile(
+                      item: item,
+                      onTap: () => _handleMenuTap(context, item),
+                    );
+                  },
+                ),
             ],
           ),
         );
@@ -1386,8 +1659,9 @@ class _MenuSection extends StatelessWidget {
     }
 
     final Widget page = switch (item.label) {
-      'Lihat Kelas Anda' => const ClassRecapListPage(),
-      'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
+      'Jadwal Mengajar' => const JadwalMengajarPage(),
+      'Kelas Siswa' => const ClassRecapListPage(),
+      'Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
       _ => const SelectClassDatePage(mode: PresensiEntryMode.manual),
     };
 
@@ -1405,25 +1679,25 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(8),
       highlightColor: _HomePageState.primaryBlue.withValues(alpha: 0.08),
       splashColor: _HomePageState.primaryBlue.withValues(alpha: 0.12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _EducationMenuIcon(item: item),
-            const SizedBox(height: 12),
+            const SizedBox(height: 9),
             Text(
               item.label,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 height: 1.24,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: Color(0xFF2F2F2F),
               ),
             ),
@@ -1441,10 +1715,24 @@ class _EducationMenuIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!item.iconAsset.toLowerCase().endsWith('.svg')) {
+      return Image.asset(
+        item.iconAsset,
+        width: 58,
+        height: 54,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.image_not_supported_outlined,
+          size: 42,
+          color: Colors.grey,
+        ),
+      );
+    }
+
     return SvgPicture.asset(
       item.iconAsset,
-      width: 76,
-      height: 72,
+      width: 58,
+      height: 54,
       fit: BoxFit.contain,
     );
   }
