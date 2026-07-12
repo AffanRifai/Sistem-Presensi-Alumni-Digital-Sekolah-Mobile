@@ -21,8 +21,6 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _nisnController = TextEditingController();
-  final _classController = TextEditingController();
-  final _majorController = TextEditingController();
 
   List<Map<String, dynamic>> _schools = [];
   int? _selectedSchoolId;
