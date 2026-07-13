@@ -9,6 +9,7 @@ import '../alumni/alumni_event_page.dart';
 import '../alumni/alumni_profile_page.dart';
 import '../alumni/job_vacancy_page.dart';
 import '../auth/data/auth_service.dart';
+import '../jadwal_mengajar/data/schedule_reminder_service.dart';
 import '../kelas/list_rekap_kelas_page.dart';
 import '../notification/data/notification_controller.dart';
 import '../notification/notification_page.dart';
@@ -46,6 +47,16 @@ class _HomePageState extends State<HomePage> {
     // Inisialisasi token FCM perangkat dan daftarkan ke Laravel backend
     FcmService().init();
     NotificationController.instance.refreshUnreadCount();
+
+    // Aktifkan pengingat jadwal mengajar (khusus role teacher)
+    _initScheduleReminder();
+  }
+
+  Future<void> _initScheduleReminder() async {
+    final user = await _authService.readUser();
+    if (user?.role == 'teacher') {
+      await ScheduleReminderService.instance.init();
+    }
   }
 
   // Fungsi untuk melompat ke tab profil jika avatar diklik
