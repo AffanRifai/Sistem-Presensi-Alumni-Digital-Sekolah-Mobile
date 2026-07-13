@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/network/api_exception.dart';
 import '../siswa/data/student_attendance_models.dart';
 import 'data/parent_attendance_service.dart';
-import '../auth/data/auth_service.dart';
-import '../auth/login_page.dart';
 
 class ParentHomePage extends StatefulWidget {
   const ParentHomePage({super.key});
@@ -15,7 +13,6 @@ class ParentHomePage extends StatefulWidget {
 
 class _ParentHomePageState extends State<ParentHomePage> {
   static const Color primaryBlue = Color(0xFF3E87D8);
-  static const Color pageBg = Color(0xFFEAF5FB);
 
   final ParentAttendanceService _parentAttendanceService =
       ParentAttendanceService();
@@ -24,22 +21,11 @@ class _ParentHomePageState extends State<ParentHomePage> {
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   bool _isLoading = true;
   String? _errorMessage;
-  String _parentName = 'Orangtua';
 
   @override
   void initState() {
     super.initState();
-    _loadParentProfile();
     _loadHistory();
-  }
-
-  Future<void> _loadParentProfile() async {
-    final user = await AuthService().readUser();
-    if (user != null && mounted) {
-      setState(() {
-        _parentName = user.name;
-      });
-    }
   }
 
   Future<void> _loadHistory() async {
@@ -273,42 +259,7 @@ class _ParentHomePageState extends State<ParentHomePage> {
     await _loadHistory();
   }
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Konfirmasi Logout'),
-          content: const Text('Apakah kamu yakin ingin logout?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryBlue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
-    );
 
-    if (confirmed != true) return;
-
-    await AuthService().logout();
-
-    if (!context.mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-      (route) => false,
-    );
-  }
 
   void _resetToCurrentMonth() {
     setState(() {
@@ -320,68 +271,47 @@ class _ParentHomePageState extends State<ParentHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: pageBg,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF4A90D9), Color(0xFFBFE0F5)],
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(28),
-                  bottomRight: Radius.circular(28),
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 16, 12),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 28,
-                      color: Color(0xFF4A90D9),
-                    ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back, color: Colors.black87),
+                    tooltip: 'Kembali',
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 2),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _parentName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                        const Text(
+                          'Riwayat Kehadiran Anak',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F2937),
                           ),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
-                          'Orangtua',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
+                        Text(
+                          _formatMonth(_selectedMonth),
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF6B7280),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: () => _handleLogout(context),
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    tooltip: 'Logout',
-                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const Divider(height: 1, color: Color(0xFFE5E7EB)),
             Expanded(
               child: _HistoryContent(
                 isLoading: _isLoading,
@@ -457,14 +387,6 @@ class _HistoryContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Laporan Presensi Anak',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: Colors.black87,
-            ),
-          ),
           const SizedBox(height: 16),
           _ProfileCard(profile: data.profile!),
           const SizedBox(height: 16),

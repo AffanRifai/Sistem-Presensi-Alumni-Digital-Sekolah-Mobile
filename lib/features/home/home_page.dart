@@ -19,6 +19,7 @@ import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../siswa/riwayat_kehadiran_page.dart';
 import 'data/education_news_service.dart';
 import 'data/parent_today_attendance_service.dart';
+import '../orangtua/parent_home_page.dart';
 import 'user_profile_page.dart';
 import '../jadwal_mengajar/jadwal_mengajar_page.dart';
 
@@ -98,16 +99,6 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(builder: (context) => const ScanQrAttendancePage()),
       );
-      return;
-    }
-
-    if (isAlumni) {
-      _selectTab(index);
-      return;
-    }
-
-    if (index == 2) {
-      _selectTab(2);
       return;
     }
 
@@ -385,11 +376,15 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                 }
 
                 if (snapshot.data?.role == 'parent') {
-                  return const Column(
+                  return Column(
                     children: [
-                      _ParentTodayAttendanceSection(),
-                      SizedBox(height: 24),
-                      _EducationInformationSection(),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _ParentQuickAccessCard(),
+                      ),
+                      const SizedBox(height: 24),
+                      const _EducationInformationSection(),
                     ],
                   );
                 }
@@ -1340,6 +1335,99 @@ class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
   }
 }
 
+class _ParentQuickAccessCard extends StatelessWidget {
+  const _ParentQuickAccessCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Kehadiran Anak Saya',
+          style: TextStyle(
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F2937),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Material(
+          color: Colors.white,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ParentHomePage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _HomePageState.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_outlined,
+                      color: _HomePageState.primaryBlue,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Riwayat Kehadiran Anak',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Lihat status presensi anak dan filter berdasarkan bulan.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 17,
+                    color: Color(0xFF64748B),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _MenuSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
 
@@ -1863,11 +1951,24 @@ class _StudentNavSideItem extends StatelessWidget {
 String _formatRole(String? value) {
   if (value == null || value.isEmpty) return '-';
 
-  return value
-      .split('_')
-      .map((word) {
-        if (word.isEmpty) return word;
-        return '${word[0].toUpperCase()}${word.substring(1)}';
-      })
-      .join(' ');
+  switch (value.toLowerCase()) {
+    case 'teacher':
+      return 'Guru';
+    case 'student':
+      return 'Siswa';
+    case 'parent':
+      return 'Orang Tua';
+    case 'alumni':
+      return 'Alumni';
+    case 'admin':
+      return 'Admin';
+    default:
+      return value
+          .split('_')
+          .map((word) {
+            if (word.isEmpty) return word;
+            return '${word[0].toUpperCase()}${word.substring(1)}';
+          })
+          .join(' ');
+  }
 }
