@@ -509,7 +509,7 @@ class _LoginPageState extends State<LoginPage> {
                             'Lupa password?',
                             style: TextStyle(
                               color: buttonColor,
-                              fontSize: 14,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -519,20 +519,20 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              'Belum punya akun? ',
+                              'Daftar Sebagai Alumni? ',
                               style: TextStyle(
                                 color: Colors.black54,
-                                fontSize: 14,
+                                fontSize: 14.5,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             GestureDetector(
                               onTap: _isLoading ? null : _goToAlumniRegister,
                               child: const Text(
-                                'Daftar',
+                                'Klik Daftar',
                                 style: TextStyle(
                                   color: buttonColor,
-                                  fontSize: 14,
+                                  fontSize: 14.5,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),

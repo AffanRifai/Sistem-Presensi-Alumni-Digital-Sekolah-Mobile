@@ -69,23 +69,8 @@ class PendingVerificationPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 34),
                   AuthPrimaryButton(
-                    label: 'Cek Status Ulang',
+                    label: 'kembali ke login',
                     onPressed: () => _handleLogout(context),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 50,
-                    child: OutlinedButton(
-                      onPressed: () => _handleLogout(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AuthUi.text,
-                        side: const BorderSide(color: AuthUi.border),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text('Keluar'),
-                    ),
                   ),
                 ],
               ),
