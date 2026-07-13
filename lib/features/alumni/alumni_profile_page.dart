@@ -60,8 +60,26 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal logout: $e')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal logout: $e')));
+        }
       }
+    }
+  }
+
+  Future<void> _handleEdit() async {
+    if (snapshotData == null) return;
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AlumniProfileEditPage(currentProfile: snapshotData!),
+      ),
+    );
+    
+    if (result == true && mounted) {
+      setState(() {
+        _profileFuture = _service.fetchProfile();
+      });
     }
   }
 
@@ -80,33 +98,6 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
         ),
         elevation: 0,
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: primaryColor),
-            tooltip: 'Edit Profil',
-            onPressed: () async {
-              if (snapshotData == null) return;
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AlumniProfileEditPage(currentProfile: snapshotData!),
-                ),
-              );
-              
-              if (result == true && mounted) {
-                setState(() {
-                  _profileFuture = _service.fetchProfile();
-                });
-              }
-            },
-          ),
-          // Icon Logout di AppBar (Opsional, tapi bagus untuk akses cepat)
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
-            tooltip: 'Keluar',
-            onPressed: _handleLogout,
-          ),
-        ],
       ),
       body: FutureBuilder<AlumniProfile>(
         future: _profileFuture,
@@ -131,7 +122,8 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
           
           return _ProfileContent(
             profile: profile,
-            onLogoutTap: _handleLogout, // Mengirimkan fungsi logout ke ProfileContent
+            onEditTap: _handleEdit,
+            onLogoutTap: _handleLogout,
           );
         },
       ),
@@ -195,9 +187,14 @@ class _ErrorView extends StatelessWidget {
 // ─── Profile Content ──────────────────────────────────────────────────────────
 class _ProfileContent extends StatelessWidget {
   final AlumniProfile profile;
+  final VoidCallback onEditTap;
   final VoidCallback onLogoutTap;
 
-  const _ProfileContent({required this.profile, required this.onLogoutTap});
+  const _ProfileContent({
+    required this.profile,
+    required this.onEditTap,
+    required this.onLogoutTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -335,6 +332,33 @@ class _ProfileContent extends StatelessWidget {
                   ],
                 ),
 
+                _buildSection(
+                  title: 'Tanya Jawab & Bantuan (FAQ)',
+                  icon: Icons.help_outline_rounded,
+                  children: [
+                    _buildFaqTile(
+                      context,
+                      question: 'Apa saja yang bisa saya lakukan sebagai alumni?',
+                      answer: 'Sebagai alumni, Anda dapat memperbarui data tracer study (pekerjaan/pendidikan), membuat & mengajukan Event Reuni/Alumni, serta melamar Lowongan Pekerjaan (Job Vacancy).',
+                    ),
+                    _buildFaqTile(
+                      context,
+                      question: 'Bagaimana cara memperbarui status karir saya?',
+                      answer: 'Tekan tombol "Edit Profil" (ikon pensil) di samping nama Anda di bagian atas halaman ini, lalu perbarui status pendidikan, pekerjaan, atau usaha Anda saat ini.',
+                    ),
+                    _buildFaqTile(
+                      context,
+                      question: 'Bagaimana cara membuat Event Alumni baru?',
+                      answer: 'Pergi ke menu "Event" di halaman utama aplikasi, tekan tombol "Buat Event" di pojok kanan bawah, isi detail event Anda, lalu ajukan untuk disetujui pihak admin sekolah.',
+                    ),
+                    _buildFaqTile(
+                      context,
+                      question: 'Mengapa pengisian profil ini penting bagi sekolah?',
+                      answer: 'Data karir alumni yang akurat sangat membantu akreditasi sekolah, penelusuran tracer study, serta memberikan referensi keselarasan kurikulum dengan kebutuhan industri.',
+                    ),
+                  ],
+                ),
+
                 const SizedBox(height: 16),
                 
                 // ── Tombol Logout Besar di Bawah ──
@@ -374,51 +398,83 @@ class _ProfileContent extends StatelessWidget {
     const primaryColor = Color(0xFF4A90D9);
     
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Left: Avatar
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: primaryColor.withOpacity(0.2), width: 2),
+              border: Border.all(color: primaryColor.withOpacity(0.15), width: 1.5),
             ),
             child: CircleAvatar(
-              radius: 46,
+              radius: 40,
               backgroundColor: primaryColor.withOpacity(0.1),
               child: Text(
                 profile.name.isNotEmpty ? profile.name[0].toUpperCase() : '?',
                 style: const TextStyle(
-                  fontSize: 36,
+                  fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            profile.name,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 22,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _formatRole(profile.role),
-              style: const TextStyle(
-                color: primaryColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+          const SizedBox(width: 20),
+          // Right: Info Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name
+                Text(
+                  profile.name,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Role Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _formatRole(profile.role),
+                    style: const TextStyle(
+                      color: primaryColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: onEditTap,
+                  icon: const Icon(Icons.edit_outlined, size: 16, color: primaryColor),
+                  label: const Text(
+                    'Edit Profil',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    side: BorderSide(color: primaryColor.withOpacity(0.4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -426,38 +482,88 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  // --- Layout Flat Pengganti _buildCard ---
+  // --- Layout Dropdown/Collapsible Menggunakan ExpansionTile ---
   Widget _buildSection({
     required String title,
     required IconData icon,
     required List<Widget> children,
     FontWeight fontWeight = FontWeight.w500,
   }) {
+    const primaryColor = Color(0xFF4A90D9);
+
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            children: [
-              Icon(icon, size: 24, color: const Color(0xFF4A90D9)),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: fontWeight,
-                  color: Colors.black87,
-                ),
+        Theme(
+          data: ThemeData().copyWith(
+            dividerColor: Colors.transparent,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+          ),
+          child: ExpansionTile(
+            title: Text(
+              title,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: fontWeight,
+                color: Colors.black87,
               ),
-            ],
+            ),
+            leading: Icon(icon, size: 24, color: primaryColor),
+            iconColor: primaryColor,
+            collapsedIconColor: Colors.grey.shade600,
+            textColor: Colors.black87,
+            collapsedTextColor: Colors.black87,
+            shape: const Border(), // Menghilangkan garis atas/bawah bawaan saat terbuka
+            collapsedShape: const Border(),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(left: 40, bottom: 12),
+            initiallyExpanded: title == 'Informasi Akun', // Informasi akun terbuka secara default
+            children: children,
           ),
         ),
-        ...children,
-        const SizedBox(height: 16),
         const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 8),
       ],
+    );
+  }
+
+  Widget _buildFaqTile(BuildContext context, {required String question, required String answer}) {
+    const primaryColor = Color(0xFF4A90D9);
+    return Theme(
+      data: ThemeData().copyWith(
+        dividerColor: Colors.transparent,
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+      ),
+      child: ExpansionTile(
+        title: Text(
+          question,
+          style: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        iconColor: primaryColor,
+        collapsedIconColor: Colors.grey.shade600,
+        textColor: primaryColor,
+        collapsedTextColor: Colors.black87,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Text(
+              answer,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

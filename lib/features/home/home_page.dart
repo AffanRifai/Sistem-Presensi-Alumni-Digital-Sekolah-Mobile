@@ -1404,7 +1404,7 @@ class _MenuSection extends StatelessWidget {
                     crossAxisCount: 3,
                     mainAxisSpacing: 18,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 0.92,
+                    childAspectRatio: 0.82,
                   ),
                   itemBuilder: (context, index) {
                     final item = items[index];
@@ -1514,8 +1514,8 @@ class _EducationMenuIcon extends StatelessWidget {
     if (!item.iconAsset.toLowerCase().endsWith('.svg')) {
       return Image.asset(
         item.iconAsset,
-        width: 58,
-        height: 54,
+        width: 46,
+        height: 42,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const Icon(
           Icons.image_not_supported_outlined,
@@ -1527,8 +1527,8 @@ class _EducationMenuIcon extends StatelessWidget {
 
     return SvgPicture.asset(
       item.iconAsset,
-      width: 58,
-      height: 54,
+      width: 46,
+      height: 42,
       fit: BoxFit.contain,
     );
   }
