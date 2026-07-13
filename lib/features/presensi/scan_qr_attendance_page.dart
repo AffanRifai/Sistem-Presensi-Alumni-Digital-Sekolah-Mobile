@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/network/api_exception.dart';
@@ -107,17 +108,23 @@ class _ScanQrAttendancePageState extends State<ScanQrAttendancePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                success ? Icons.check_circle : Icons.error_outline,
-                color: success ? const Color(0xFF2E9E5B) : Colors.redAccent,
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(title)),
-            ],
-          ),
-          content: Text(message),
+          title: success
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const _AnimatedSuccessIcon(),
+                    const SizedBox(height: 12),
+                    Text(title, textAlign: TextAlign.center),
+                  ],
+                )
+              : Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(title)),
+                  ],
+                ),
+          content: Text(message, textAlign: success ? TextAlign.center : null),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -186,10 +193,60 @@ class _ScanQrAttendancePageState extends State<ScanQrAttendancePage> {
             ),
           ),
           if (_isSubmitting)
-            const Center(
-              child: CircularProgressIndicator(color: primaryBlue),
-            ),
+            const Center(child: CircularProgressIndicator(color: primaryBlue)),
         ],
+      ),
+    );
+  }
+}
+
+class _AnimatedSuccessIcon extends StatefulWidget {
+  const _AnimatedSuccessIcon();
+
+  @override
+  State<_AnimatedSuccessIcon> createState() => _AnimatedSuccessIconState();
+}
+
+class _AnimatedSuccessIconState extends State<_AnimatedSuccessIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _turnAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 850),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.06).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutBack),
+    );
+    _turnAnimation = Tween<double>(
+      begin: -0.015,
+      end: 0.015,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return RotationTransition(
+      turns: _turnAnimation,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: SvgPicture.asset(
+          'assets/icons/success/Checked.svg',
+          width: 88,
+          height: 88,
+        ),
       ),
     );
   }

@@ -75,6 +75,7 @@ flutter:
 
   assets:
     - assets/icons/home/
+    - assets/icons/success/
     - assets/images/home/
     - assets/images/home/splash/
     - assets/voiceover/

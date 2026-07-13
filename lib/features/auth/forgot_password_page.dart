@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'verify_otp_page.dart';
+import 'widgets/auth_page_components.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -57,79 +58,53 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF3E87D8);
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: primaryBlue,
-        elevation: 0,
-        title: const Text('Lupa Password'),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Masukkan email akun Anda. Kode OTP akan dikirim ke email tersebut.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: Colors.black54,
-                  ),
+      body: AuthPageBody(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AuthHeader(
+                title: 'Lupa Password?',
+                subtitle:
+                    'Masukkan email akun Anda. Kami akan mengirimkan kode OTP untuk mengatur ulang password.',
+              ),
+              const SizedBox(height: 38),
+              const Text(
+                'Email',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _emailController,
+                enabled: !_isLoading,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.email],
+                decoration: AuthUi.inputDecoration(
+                  hintText: 'nama@email.com',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, size: 21),
                 ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _emailController,
-                  enabled: !_isLoading,
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.done,
-                  autofillHints: const [AutofillHints.email],
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                  validator: (value) {
-                    final email = value?.trim() ?? '';
-                    final valid = RegExp(
-                      r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                    ).hasMatch(email);
-
-                    if (email.isEmpty) return 'Email wajib diisi.';
-                    if (!valid) return 'Format email tidak valid.';
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => _isLoading ? null : _requestOtp(),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _requestOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Dapatkan Kode OTP'),
-                  ),
-                ),
-              ],
-            ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  final valid = RegExp(
+                    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                  ).hasMatch(email);
+                  if (email.isEmpty) return 'Email wajib diisi.';
+                  if (!valid) return 'Format email tidak valid.';
+                  return null;
+                },
+                onFieldSubmitted: (_) => _isLoading ? null : _requestOtp(),
+              ),
+              const SizedBox(height: 22),
+              AuthPrimaryButton(
+                label: 'Kirim Kode OTP',
+                onPressed: _requestOtp,
+                isLoading: _isLoading,
+              ),
+            ],
           ),
         ),
       ),

@@ -10,6 +10,7 @@ import 'alumni_register_page.dart';
 import 'forgot_password_page.dart';
 import 'pending_verification_page.dart';
 import 'welcome_page.dart';
+import 'widgets/auth_page_components.dart';
 import 'widgets/google_login_button.dart';
 
 import 'data/auth_service.dart';
@@ -280,17 +281,50 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    const Color backgroundColor = Color(0xFFFFFFFF);
-    const Color fieldColor = Color(0xFFFFFFFF);
-    const Color buttonColor = Color(0xFF3E87D8);
-    const Color iconColor = Color(0xFF7A8B96);
+    const Color backgroundColor = Colors.white;
+    const Color fieldColor = Colors.white;
+    const Color buttonColor = AuthUi.primary;
+    const Color iconColor = AuthUi.muted;
+    const double headerImageHeight = 310;
+    const double panelTopPosition = 255;
+    const double formTopSpacing = 296;
+    const double loginButtonWidth = 220;
+    const Alignment headerImageAlignment = Alignment(0, -0.2);
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
+        top: false,
         child: Stack(
           children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: headerImageHeight,
+              child: Image.asset(
+                'assets/images/home/splash/splashwelcome.png',
+                fit: BoxFit.cover,
+                alignment: headerImageAlignment,
+              ),
+            ),
+            Positioned(
+              top: panelTopPosition,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(34),
+                    topRight: Radius.circular(34),
+                  ),
+                ),
+              ),
+            ),
             SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Center(
@@ -299,21 +333,27 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(height: 120),
+                        const SizedBox(height: formTopSpacing),
                         const Text(
-                          'Login',
+                          'Selamat Datang',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w700,
+                            color: AuthUi.text,
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Masuk untuk melanjutkan ke akun Anda.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 14, color: AuthUi.muted),
+                        ),
+                        const SizedBox(height: 36),
 
                         // Kartu putih berisi input username & password
                         Container(
-                          padding: const EdgeInsets.all(14),
+                          padding: EdgeInsets.zero,
                           child: Column(
                             children: [
                               // Username field
@@ -321,14 +361,7 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color.fromARGB(
-                                      255,
-                                      157,
-                                      160,
-                                      164,
-                                    ),
-                                  ),
+                                  border: Border.all(color: AuthUi.border),
                                 ),
                                 child: TextField(
                                   controller: _emailController,
@@ -357,14 +390,7 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: BoxDecoration(
                                   color: fieldColor,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color.fromARGB(
-                                      255,
-                                      157,
-                                      160,
-                                      164,
-                                    ),
-                                  ),
+                                  border: Border.all(color: AuthUi.border),
                                 ),
                                 child: TextField(
                                   controller: _passwordController,
@@ -404,19 +430,19 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 20),
 
                         // Tombol Login
                         Center(
                           child: SizedBox(
-                            width: 220,
-                            height: 44,
+                            width: loginButtonWidth,
+                            height: 52,
                             child: ElevatedButton(
                               onPressed: _isLoading ? null : _handleLogin,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: buttonColor,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(24),
+                                  borderRadius: BorderRadius.circular(26),
                                 ),
                                 elevation: 0,
                               ),
@@ -430,7 +456,7 @@ class _LoginPageState extends State<LoginPage> {
                                       ),
                                     )
                                   : const Text(
-                                      'Login',
+                                      'Masuk',
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
@@ -476,15 +502,15 @@ class _LoginPageState extends State<LoginPage> {
                             onPressed: _handleGoogleLogin,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         TextButton(
                           onPressed: _isLoading ? null : _handleForgotPassword,
                           child: const Text(
                             'Lupa password?',
                             style: TextStyle(
                               color: buttonColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
@@ -493,21 +519,21 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             const Text(
-                              'Belum punya akun? ',
+                              'Daftar Sebagai Alumni? ',
                               style: TextStyle(
                                 color: Colors.black54,
-                                fontSize: 16,
+                                fontSize: 14.5,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             GestureDetector(
                               onTap: _isLoading ? null : _goToAlumniRegister,
                               child: const Text(
-                                'Daftar',
+                                'Klik Daftar',
                                 style: TextStyle(
                                   color: buttonColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
@@ -520,14 +546,15 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             Positioned(
-              top: 4,
-              left: 8,
+              top: MediaQuery.paddingOf(context).top + 10,
+              left: 12,
               child: TextButton.icon(
                 onPressed: _isLoading ? null : _goBackToWelcome,
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 19),
                 label: const Text('Kembali'),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF3E87D8),
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.black.withValues(alpha: 0.2),
                   textStyle: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'data/auth_service.dart';
+import 'widgets/auth_page_components.dart';
 
 class PendingVerificationPage extends StatelessWidget {
   const PendingVerificationPage({super.key});
@@ -20,71 +21,60 @@ class PendingVerificationPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(
-                Icons.hourglass_top_rounded,
-                size: 100,
-                color: Color(0xFFE0983C),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Menunggu Verifikasi Admin',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Akun Anda berhasil didaftarkan, namun saat ini masih dalam status "Pending".\n\nAdmin akan segera memverifikasi data kelulusan Anda sebelum fitur-fitur dapat digunakan.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 48),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Coba relogin dengan mengarahkan ke halaman login
-                  _handleLogout(context);
-                },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Cek Status Ulang (Relogin)'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: const Color(0xFF4A90D9),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFEAF2FE),
+                      ),
+                      child: const Icon(
+                        Icons.mark_email_unread_outlined,
+                        size: 36,
+                        color: AuthUi.primary,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => _handleLogout(context),
-                icon: const Icon(Icons.logout),
-                label: const Text('Keluar (Logout)'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Pendaftaran Terkirim',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 27,
+                      fontWeight: FontWeight.w700,
+                      color: AuthUi.text,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Data akun alumni Anda sudah kami terima dan sedang diperiksa oleh admin. Silakan cek kembali secara berkala.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AuthUi.muted,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 34),
+                  AuthPrimaryButton(
+                    label: 'kembali ke login',
+                    onPressed: () => _handleLogout(context),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

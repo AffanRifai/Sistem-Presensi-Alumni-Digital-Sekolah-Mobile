@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'login_page.dart';
+import 'widgets/auth_page_components.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   final String email;
@@ -78,119 +79,124 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF3E87D8);
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: primaryBlue,
-        elevation: 0,
-        title: const Text('Password Baru'),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Buat password baru minimal 8 karakter.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: Colors.black54,
+      body: AuthPageBody(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const AuthHeader(
+                title: 'Password Baru',
+                subtitle:
+                    'Buat password baru yang berbeda dari password sebelumnya.',
+              ),
+              const SizedBox(height: 38),
+              const Text(
+                'Password',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _passwordController,
+                enabled: !_isLoading,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  hintText: 'Minimal 8 karakter',
+                  filled: true,
+                  fillColor: AuthUi.field,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _passwordController,
-                  enabled: !_isLoading,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password Baru',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AuthUi.primary),
+                  ),
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                     ),
                   ),
-                  validator: (value) {
-                    final password = value ?? '';
-                    if (password.isEmpty) return 'Password wajib diisi.';
-                    if (password.length < 8) {
-                      return 'Password minimal 8 karakter.';
-                    }
-                    return null;
-                  },
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _confirmationController,
-                  enabled: !_isLoading,
-                  obscureText: _obscureConfirmation,
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: 'Konfirmasi Password',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(
-                          () => _obscureConfirmation = !_obscureConfirmation,
-                        );
-                      },
-                      icon: Icon(
-                        _obscureConfirmation
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                      ),
+                validator: (value) {
+                  final password = value ?? '';
+                  if (password.isEmpty) return 'Password wajib diisi.';
+                  if (password.length < 8) {
+                    return 'Password minimal 8 karakter.';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Konfirmasi Password',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _confirmationController,
+                enabled: !_isLoading,
+                obscureText: _obscureConfirmation,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  hintText: 'Ulangi password baru',
+                  filled: true,
+                  fillColor: AuthUi.field,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AuthUi.primary),
+                  ),
+                  suffixIcon: IconButton(
+                    onPressed: () {
+                      setState(
+                        () => _obscureConfirmation = !_obscureConfirmation,
+                      );
+                    },
+                    icon: Icon(
+                      _obscureConfirmation
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
                     ),
                   ),
-                  validator: (value) {
-                    final confirmation = value ?? '';
-                    if (confirmation.isEmpty) {
-                      return 'Konfirmasi password wajib diisi.';
-                    }
-                    if (confirmation != _passwordController.text) {
-                      return 'Konfirmasi password tidak sama.';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _resetPassword,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Simpan Password Baru'),
-                  ),
-                ),
-              ],
-            ),
+                validator: (value) {
+                  final confirmation = value ?? '';
+                  if (confirmation.isEmpty) {
+                    return 'Konfirmasi password wajib diisi.';
+                  }
+                  if (confirmation != _passwordController.text) {
+                    return 'Konfirmasi password tidak sama.';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) => _isLoading ? null : _resetPassword(),
+              ),
+              const SizedBox(height: 26),
+              AuthPrimaryButton(
+                label: 'Buat Password Baru',
+                onPressed: _resetPassword,
+                isLoading: _isLoading,
+              ),
+            ],
           ),
         ),
       ),
