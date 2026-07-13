@@ -103,9 +103,13 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
       );
       Navigator.pop(context, true); // true indicates success
     } on ApiException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      }
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -114,14 +118,17 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
   }
 
   // --- UI HELPER WIDGETS ---
-  InputDecoration _buildInputDecoration({required String label, required IconData icon}) {
+  InputDecoration _buildInputDecoration({required String label, required IconData icon, required BuildContext context}) {
     const primaryColor = Color(0xFF4A90D9);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-      prefixIcon: Icon(icon, color: primaryColor.withOpacity(0.7)),
+      prefixIcon: Icon(icon, color: primaryColor.withValues(alpha: 0.7)),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: isDark ? theme.colorScheme.surface : Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -129,7 +136,7 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
+        borderSide: BorderSide(color: isDark ? theme.colorScheme.outlineVariant : Colors.grey.shade200, width: 1.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -146,228 +153,256 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
     );
   }
 
-  Widget _buildSectionHeader({required String title, required IconData icon}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: const Color(0xFF4A90D9), size: 24),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18, 
-              fontWeight: FontWeight.w500, 
-              color: Colors.black87,
+  Widget _buildFlatSection(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: const Color(0xFF4A90D9), size: 20),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
+        const SizedBox(height: 16),
+        ...children,
+      ],
     );
   }
-  // -------------------------
 
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF4A90D9);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final backgroundColor = isDark ? theme.colorScheme.surface : Colors.white;
+
     final showStudyingFields = _currentStatus == 'studying' || _currentStatus == 'studying_working';
     final showWorkingFields = _currentStatus == 'working' || _currentStatus == 'studying_working';
     final showBusinessFields = _currentStatus == 'entrepreneur';
 
     return Scaffold(
-      backgroundColor: Colors.white, // Layout flat dan bersih dengan latar belakang putih penuh
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Profil Alumni', style: TextStyle(fontWeight: FontWeight.w500)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: const Text('Edit Profil Alumni', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        foregroundColor: theme.colorScheme.onSurface,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // --- Header Section ---
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.manage_accounts_outlined, color: primaryColor, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Text(
-                        'Informasi Alumni',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF1A1A1A),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Pastikan data aktivitas dan kontak Anda selalu up-to-date agar tetap terhubung dengan sekolah dan sesama alumni.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
-                    height: 1.5,
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                const Divider(height: 1, thickness: 1),
-                const SizedBox(height: 24),
-
                 // --- Section: Status & Aktivitas ---
-                _buildSectionHeader(title: 'Status & Aktivitas', icon: Icons.work_history_outlined),
-                
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: _currentStatus,
-                  icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
-                  decoration: _buildInputDecoration(
-                    label: 'Status Saat Ini',
-                    icon: Icons.info_outline,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'unemployed', child: Text('Belum bekerja')),
-                    DropdownMenuItem(value: 'studying', child: Text('Kuliah / Pendidikan Lanjut')),
-                    DropdownMenuItem(value: 'working', child: Text('Bekerja')),
-                    DropdownMenuItem(value: 'studying_working', child: Text('Kuliah Sambil Bekerja')),
-                    DropdownMenuItem(value: 'entrepreneur', child: Text('Wirausaha')),
+                _buildFlatSection(
+                  context,
+                  title: 'Status & Aktivitas',
+                  icon: Icons.work_history_outlined,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _currentStatus,
+                      icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
+                      decoration: _buildInputDecoration(
+                        label: 'Status Saat Ini',
+                        icon: Icons.info_outline,
+                        context: context,
+                      ),
+                      dropdownColor: theme.colorScheme.surface,
+                      items: const [
+                        DropdownMenuItem(value: 'unemployed', child: Text('Belum bekerja')),
+                        DropdownMenuItem(value: 'studying', child: Text('Kuliah / Pendidikan Lanjut')),
+                        DropdownMenuItem(value: 'working', child: Text('Bekerja')),
+                        DropdownMenuItem(value: 'studying_working', child: Text('Kuliah Sambil Bekerja')),
+                        DropdownMenuItem(value: 'entrepreneur', child: Text('Wirausaha')),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _currentStatus = val);
+                        }
+                      },
+                    ),
+
+                    // Dynamic Fields: Kuliah
+                    if (showStudyingFields) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _universityNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          label: 'Nama Universitas / Kampus',
+                          icon: Icons.account_balance_outlined,
+                          context: context,
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _studyProgramController,
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          label: 'Program Studi / Jurusan',
+                          icon: Icons.menu_book_outlined,
+                          context: context,
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                      ),
+                    ],
+
+                    // Dynamic Fields: Bekerja
+                    if (showWorkingFields) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _companyNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          label: 'Nama Perusahaan / Instansi',
+                          icon: Icons.business_outlined,
+                          context: context,
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _jobPositionController,
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          label: 'Jabatan / Posisi',
+                          icon: Icons.badge_outlined,
+                          context: context,
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                      ),
+                    ],
+
+                    // Dynamic Fields: Wirausaha
+                    if (showBusinessFields) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _businessNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: _buildInputDecoration(
+                          label: 'Nama Usaha / Bisnis',
+                          icon: Icons.storefront_outlined,
+                          context: context,
+                        ),
+                        validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
+                      ),
+                    ],
                   ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() => _currentStatus = val);
-                    }
-                  },
                 ),
 
-                // Dynamic Fields: Kuliah
-                if (showStudyingFields) ...[
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _universityNameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _buildInputDecoration(label: 'Nama Universitas / Kampus', icon: Icons.account_balance_outlined),
-                    validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _studyProgramController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _buildInputDecoration(label: 'Program Studi / Jurusan', icon: Icons.menu_book_outlined),
-                    validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-                  ),
-                ],
-
-                // Dynamic Fields: Bekerja
-                if (showWorkingFields) ...[
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _companyNameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _buildInputDecoration(label: 'Nama Perusahaan / Instansi', icon: Icons.business_outlined),
-                    validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _jobPositionController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _buildInputDecoration(label: 'Jabatan / Posisi', icon: Icons.badge_outlined),
-                    validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-                  ),
-                ],
-
-                // Dynamic Fields: Wirausaha
-                if (showBusinessFields) ...[
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _businessNameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: _buildInputDecoration(label: 'Nama Usaha / Bisnis', icon: Icons.storefront_outlined),
-                    validator: (v) => v == null || v.isEmpty ? 'Wajib diisi' : null,
-                  ),
-                ],
-
                 const SizedBox(height: 32),
-                const Divider(height: 1, thickness: 1),
-                const SizedBox(height: 24),
 
                 // --- Section: Lokasi & Kontak ---
-                _buildSectionHeader(title: 'Lokasi & Kontak', icon: Icons.contact_mail_outlined),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                _buildFlatSection(
+                  context,
+                  title: 'Lokasi & Kontak',
+                  icon: Icons.contact_mail_outlined,
                   children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _cityController,
-                        textInputAction: TextInputAction.next,
-                        decoration: _buildInputDecoration(label: 'Kota/Kab', icon: Icons.location_city_outlined),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _cityController,
+                            textInputAction: TextInputAction.next,
+                            decoration: _buildInputDecoration(
+                              label: 'Kota/Kab',
+                              icon: Icons.location_city_outlined,
+                              context: context,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _provinceController,
+                            textInputAction: TextInputAction.next,
+                            decoration: _buildInputDecoration(
+                              label: 'Provinsi',
+                              icon: Icons.map_outlined,
+                              context: context,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _whatsappController,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      decoration: _buildInputDecoration(
+                        label: 'Nomor WhatsApp',
+                        icon: Icons.phone_android_outlined,
+                        context: context,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _provinceController,
-                        textInputAction: TextInputAction.next,
-                        decoration: _buildInputDecoration(label: 'Provinsi', icon: Icons.map_outlined),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _linkedinUrlController,
+                      keyboardType: TextInputType.url,
+                      textInputAction: TextInputAction.done,
+                      decoration: _buildInputDecoration(
+                        label: 'URL LinkedIn (Opsional)',
+                        icon: Icons.link_outlined,
+                        context: context,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _whatsappController,
-                  keyboardType: TextInputType.phone,
-                  textInputAction: TextInputAction.next,
-                  decoration: _buildInputDecoration(label: 'Nomor WhatsApp', icon: Icons.phone_android_outlined),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _linkedinUrlController,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.done,
-                  decoration: _buildInputDecoration(label: 'URL LinkedIn (Opsional)', icon: Icons.link_outlined),
-                ),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
 
                 // --- Submit Button ---
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    disabledBackgroundColor: Colors.grey.shade400,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // Mengurangi sedikit lengkungan agar senada dengan layout flat
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade400,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                          )
+                        : const Text(
+                            'Simpan Perubahan',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.2),
+                          ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                        )
-                      : const Text(
-                          'Simpan Perubahan',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.5),
-                        ),
                 ),
                 const SizedBox(height: 32),
               ],
