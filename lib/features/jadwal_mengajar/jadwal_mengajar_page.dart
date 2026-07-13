@@ -20,18 +20,23 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
   bool _loading = true;
 
   // Warna
-  static const Color _blue     = Color(0xFF2563EB);
+  static const Color _blue = Color(0xFF2563EB);
   static const Color _blueSoft = Color(0xFFEAF1FE);
-  static const Color _amber    = Color(0xFFF59E0B);
+  static const Color _amber = Color(0xFFF59E0B);
   static const Color _amberSoft = Color(0xFFFEF3E0);
-  static const Color _dark     = Color(0xFF0F172A);
-  static const Color _muted    = Color(0xFF64748B);
-  static const Color _divider  = Color(0xFFE2E8F0);
-  static const Color _bg       = Color(0xFFF8FAFC);
+  static const Color _dark = Color(0xFF0F172A);
+  static const Color _muted = Color(0xFF64748B);
+  static const Color _divider = Color(0xFFE2E8F0);
+  static const Color _bg = Color(0xFFF8FAFC);
 
   static const List<String> _weekOrder = [
-    'monday', 'tuesday', 'wednesday', 'thursday',
-    'friday', 'saturday', 'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
   ];
 
   // Scroll & sticky header
@@ -69,14 +74,23 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
   // ── Load data ──────────────────────────────────────────────────────────
   Future<void> _loadData() async {
     if (!mounted) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final result = await _service.fetchSchedules();
       if (!mounted) return;
-      setState(() { _data = result; _loading = false; });
+      setState(() {
+        _data = result;
+        _loading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _error = e; _loading = false; });
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
     }
   }
 
@@ -87,20 +101,24 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 
   // ── Auto-refresh jam 07:00, tiap 45 menit ─────────────────────────────
   Duration _nextSlot() {
-    final now    = DateTime.now();
+    final now = DateTime.now();
     final anchor = DateTime(now.year, now.month, now.day, 7, 0, 0);
-    const cycle  = Duration(minutes: 45);
+    const cycle = Duration(minutes: 45);
     if (now.isBefore(anchor)) return anchor.difference(now);
     final elapsed = now.difference(anchor).inSeconds;
-    final cycleS  = cycle.inSeconds;
-    return anchor.add(Duration(seconds: ((elapsed ~/ cycleS) + 1) * cycleS))
+    final cycleS = cycle.inSeconds;
+    return anchor
+        .add(Duration(seconds: ((elapsed ~/ cycleS) + 1) * cycleS))
         .difference(now);
   }
 
   void _scheduleAutoRefresh() {
     _alignmentTimer = Timer(_nextSlot(), () {
       _refresh();
-      _periodicTimer = Timer.periodic(const Duration(minutes: 45), (_) => _refresh());
+      _periodicTimer = Timer.periodic(
+        const Duration(minutes: 45),
+        (_) => _refresh(),
+      );
     });
   }
 
@@ -144,13 +162,15 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
   int? _toMin(String t) {
     final m = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(t);
     if (m == null) return null;
-    final h  = int.tryParse(m.group(1)!);
+    final h = int.tryParse(m.group(1)!);
     final mn = int.tryParse(m.group(2)!);
     return (h == null || mn == null) ? null : h * 60 + mn;
   }
 
   MapEntry<String, List<ScheduleItem>>? _findEntry(
-      Map<String, List<ScheduleItem>> data, String key) {
+    Map<String, List<ScheduleItem>> data,
+    String key,
+  ) {
     for (final e in data.entries) {
       if (e.key.toLowerCase() == key) return e;
     }
@@ -159,10 +179,10 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 
   _ActiveSchedule? _computeActive(Map<String, List<ScheduleItem>> data) {
     if (data.isEmpty) return null;
-    final now     = DateTime.now();
+    final now = DateTime.now();
     final nowMins = now.hour * 60 + now.minute;
-    final today   = _weekOrder[now.weekday - 1];
-    final entry   = _findEntry(data, today);
+    final today = _weekOrder[now.weekday - 1];
+    final entry = _findEntry(data, today);
 
     if (entry != null && entry.value.isNotEmpty) {
       for (var i = 0; i < entry.value.length; i++) {
@@ -182,7 +202,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
       return _ActiveSchedule(dayKey: entry.key, index: -1, isOngoing: false);
     }
     for (var offset = 1; offset <= 6; offset++) {
-      final key   = _weekOrder[(now.weekday - 1 + offset) % 7];
+      final key = _weekOrder[(now.weekday - 1 + offset) % 7];
       final found = _findEntry(data, key);
       if (found != null && found.value.isNotEmpty) {
         return _ActiveSchedule(dayKey: found.key, index: 0, isOngoing: false);
@@ -192,7 +212,9 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
   }
 
   MapEntry<String, int>? _afterActive(
-      Map<String, List<ScheduleItem>> data, _ActiveSchedule a) {
+    Map<String, List<ScheduleItem>> data,
+    _ActiveSchedule a,
+  ) {
     final flat = <MapEntry<String, int>>[];
     for (final key in data.keys) {
       for (var i = 0; i < data[key]!.length; i++) {
@@ -206,13 +228,20 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 
   static String _label(String key) {
     switch (key.toLowerCase()) {
-      case 'monday':    return 'Senin';
-      case 'tuesday':   return 'Selasa';
-      case 'wednesday': return 'Rabu';
-      case 'thursday':  return 'Kamis';
-      case 'friday':    return 'Jumat';
-      case 'saturday':  return 'Sabtu';
-      case 'sunday':    return 'Minggu';
+      case 'monday':
+        return 'Senin';
+      case 'tuesday':
+        return 'Selasa';
+      case 'wednesday':
+        return 'Rabu';
+      case 'thursday':
+        return 'Kamis';
+      case 'friday':
+        return 'Jumat';
+      case 'saturday':
+        return 'Sabtu';
+      case 'sunday':
+        return 'Minggu';
       default:
         return key.isEmpty ? key : key[0].toUpperCase() + key.substring(1);
     }
@@ -227,14 +256,27 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
         title: Row(
           children: [
             Container(
-              width: 34, height: 34,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: _blueSoft, borderRadius: BorderRadius.circular(10)),
-              child: const Icon(Icons.calendar_month_rounded, color: _blue, size: 18),
+                color: _blueSoft,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.calendar_month_rounded,
+                color: _blue,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 10),
-            const Text('Jadwal Mengajar',
-                style: TextStyle(color: _dark, fontWeight: FontWeight.w700, fontSize: 18)),
+            const Text(
+              'Jadwal Mengajar',
+              style: TextStyle(
+                color: _dark,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
         backgroundColor: Colors.white,
@@ -265,26 +307,49 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 72, height: 72,
-                decoration: const BoxDecoration(color: _amberSoft, shape: BoxShape.circle),
-                child: const Icon(Icons.error_outline_rounded, color: _amber, size: 34),
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: _amberSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: _amber,
+                  size: 34,
+                ),
               ),
               const SizedBox(height: 16),
-              const Text('Gagal memuat jadwal.',
-                  style: TextStyle(color: _dark, fontSize: 16, fontWeight: FontWeight.w600)),
+              const Text(
+                'Gagal memuat jadwal.',
+                style: TextStyle(
+                  color: _dark,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(_error.toString(),
-                  style: const TextStyle(color: _muted, fontSize: 12),
-                  textAlign: TextAlign.center),
+              Text(
+                _error.toString(),
+                style: const TextStyle(color: _muted, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _refresh,
                 icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Coba Lagi'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _blue, foregroundColor: Colors.white, elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  backgroundColor: _blue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -301,20 +366,23 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              radius: 44, backgroundColor: _blueSoft,
+              radius: 44,
+              backgroundColor: _blueSoft,
               child: Icon(Icons.event_busy_rounded, color: _blue, size: 40),
             ),
             SizedBox(height: 16),
-            Text('Tidak ada jadwal mengajar.',
-                style: TextStyle(color: _muted, fontSize: 16)),
+            Text(
+              'Tidak ada jadwal mengajar.',
+              style: TextStyle(color: _muted, fontSize: 16),
+            ),
           ],
         ),
       );
     }
 
     // Data
-    final active     = _computeActive(data);
-    final afterAct   = active == null ? null : _afterActive(data, active);
+    final active = _computeActive(data);
+    final afterAct = active == null ? null : _afterActive(data, active);
 
     if (!_didAutoScroll && active != null) {
       _didAutoScroll = true;
@@ -332,22 +400,22 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
-              top: _stickyH + 8,  // beri ruang di bawah sticky header overlay
+              top: _stickyH + 8, // beri ruang di bawah sticky header overlay
               bottom: 32,
             ),
             itemCount: data.keys.length,
             itemBuilder: (context, index) {
-              final day       = data.keys.elementAt(index);
+              final day = data.keys.elementAt(index);
               final schedules = data[day]!;
-              final dayKey    = _dayKeys.putIfAbsent(day, () => GlobalKey());
+              final dayKey = _dayKeys.putIfAbsent(day, () => GlobalKey());
 
               return _DaySection(
-                dayKey:      dayKey,
-                label:       _label(day),
-                schedules:   schedules,
-                active:      active,
+                dayKey: dayKey,
+                label: _label(day),
+                schedules: schedules,
+                active: active,
                 afterActive: afterAct,
-                dayId:       day,
+                dayId: day,
               );
             },
           ),
@@ -379,10 +447,13 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 // ═══════════════════════════════════════════════════════════════════════
 class _ActiveSchedule {
   const _ActiveSchedule({
-    required this.dayKey, required this.index, required this.isOngoing});
+    required this.dayKey,
+    required this.index,
+    required this.isOngoing,
+  });
   final String dayKey;
-  final int    index;
-  final bool   isOngoing;
+  final int index;
+  final bool isOngoing;
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -408,18 +479,28 @@ class _StickyHeader extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF2563EB).withValues(alpha: 0.22),
-              blurRadius: 8, offset: const Offset(0, 3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 18),
+            const Icon(
+              Icons.calendar_today_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 10),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w800,
-                    color: Colors.white, letterSpacing: 0.5)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -432,16 +513,20 @@ class _StickyHeader extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════
 class _DaySection extends StatelessWidget {
   const _DaySection({
-    required this.dayKey, required this.label, required this.schedules,
-    required this.active, required this.afterActive, required this.dayId,
+    required this.dayKey,
+    required this.label,
+    required this.schedules,
+    required this.active,
+    required this.afterActive,
+    required this.dayId,
   });
 
-  final GlobalKey              dayKey;
-  final String                 label;
-  final List<ScheduleItem>     schedules;
-  final _ActiveSchedule?       active;
+  final GlobalKey dayKey;
+  final String label;
+  final List<ScheduleItem> schedules;
+  final _ActiveSchedule? active;
   final MapEntry<String, int>? afterActive;
-  final String                 dayId;
+  final String dayId;
 
   @override
   Widget build(BuildContext context) {
@@ -460,18 +545,28 @@ class _DaySection extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: const Color(0xFF2563EB).withValues(alpha: 0.18),
-                  blurRadius: 6, offset: const Offset(0, 2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 18),
+                const Icon(
+                  Icons.calendar_today_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
                 const SizedBox(width: 10),
-                Text(label,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w800,
-                        color: Colors.white, letterSpacing: 0.5)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
               ],
             ),
           ),
@@ -481,20 +576,24 @@ class _DaySection extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: List.generate(schedules.length, (idx) {
-              final isAct = active != null &&
-                  active!.dayKey == dayId && active!.index == idx;
+              final isAct =
+                  active != null &&
+                  active!.dayKey == dayId &&
+                  active!.index == idx;
               final isOngoing = isAct && active!.isOngoing;
-              final isNext    = isAct && !active!.isOngoing;
-              final cutAbove  = afterActive != null &&
-                  afterActive!.key == dayId && afterActive!.value == idx;
+              final isNext = isAct && !active!.isOngoing;
+              final cutAbove =
+                  afterActive != null &&
+                  afterActive!.key == dayId &&
+                  afterActive!.value == idx;
               return _ScheduleCard(
-                schedule:  schedules[idx],
-                isFirst:   idx == 0,
-                isLast:    idx == schedules.length - 1,
+                schedule: schedules[idx],
+                isFirst: idx == 0,
+                isLast: idx == schedules.length - 1,
                 isOngoing: isOngoing,
-                isNext:    isNext,
-                cutAbove:  cutAbove,
-                cutBelow:  isAct,
+                isNext: isNext,
+                cutAbove: cutAbove,
+                cutBelow: isAct,
               );
             }),
           ),
@@ -669,12 +768,20 @@ class _TimeChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.access_time_rounded,
-              size: 13, color: Color(0xFF2563EB)),
+          const Icon(
+            Icons.access_time_rounded,
+            size: 13,
+            color: Color(0xFF2563EB),
+          ),
           const SizedBox(width: 5),
-          Text('$start – $end',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                  color: Color(0xFF2563EB))),
+          Text(
+            '$start – $end',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF2563EB),
+            ),
+          ),
         ],
       ),
     );
@@ -685,7 +792,7 @@ class _TimeChip extends StatelessWidget {
 class _Chip extends StatelessWidget {
   const _Chip({required this.icon, required this.label});
   final IconData icon;
-  final String   label;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -701,9 +808,14 @@ class _Chip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: const Color(0xFFF59E0B)),
           const SizedBox(width: 6),
-          Text(label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                  color: Color(0xFF78350F))),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF78350F),
+            ),
+          ),
         ],
       ),
     );
@@ -713,21 +825,32 @@ class _Chip extends StatelessWidget {
 // ─── Badge status ───────────────────────────────────────────────────────
 class _Badge extends StatelessWidget {
   const _Badge({required this.label, required this.color, required this.icon});
-  final String label; final Color color; final IconData icon;
+  final String label;
+  final Color color;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 12, color: Colors.white),
           const SizedBox(width: 4),
-          Text(label,
-              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700,
-                  color: Colors.white, letterSpacing: 0.2)),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.2,
+            ),
+          ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '/features/home/home_page.dart';
+import '../../core/audio/welcome_audio_service.dart';
 import '../../core/config/api_config.dart';
 import 'alumni_register_page.dart';
 import 'forgot_password_page.dart';
@@ -218,6 +219,19 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleAuthResult(AuthResult result) async {
+    final isRejectedAlumni =
+        result.user.role == 'alumni' &&
+        result.user.verificationStatus == 'rejected';
+
+    if (isRejectedAlumni) {
+      _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
+      await _authService.logout();
+      return;
+    }
+
+    await WelcomeAudioService.play();
+    if (!mounted) return;
+
     if (result.user.role == 'alumni' &&
         result.user.verificationStatus == 'pending') {
       Navigator.pushAndRemoveUntil(
@@ -227,10 +241,6 @@ class _LoginPageState extends State<LoginPage> {
         ),
         (route) => false,
       );
-    } else if (result.user.role == 'alumni' &&
-        result.user.verificationStatus == 'rejected') {
-      _showMessage('Maaf, pendaftaran akun alumni Anda ditolak.');
-      await _authService.logout();
     } else {
       Navigator.pushAndRemoveUntil(
         context,

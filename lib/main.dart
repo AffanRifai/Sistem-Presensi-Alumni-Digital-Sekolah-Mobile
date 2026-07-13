@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'core/navigation/app_navigator.dart';
 import 'features/auth/data/auth_service.dart';
 import 'features/auth/pending_verification_page.dart';
+import 'features/auth/splash_page.dart';
 import 'features/auth/welcome_page.dart';
 import 'features/home/home_page.dart';
 
@@ -43,11 +44,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: appNavigatorKey,
-      title: 'sistem presensi sekolah',
+      title: 'simpad',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3E87D8)),
       ),
-      home: const SessionGate(),
+      home: const SplashPage(nextPage: SessionGate()),
     );
   }
 }

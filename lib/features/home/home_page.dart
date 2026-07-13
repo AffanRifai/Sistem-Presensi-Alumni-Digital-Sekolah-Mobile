@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
@@ -11,8 +15,8 @@ import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
-import '../siswa/data/student_attendance_models.dart';
-import '../siswa/data/student_attendance_service.dart';
+import '../siswa/riwayat_kehadiran_page.dart';
+import 'data/education_news_service.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
 import '../jadwal_mengajar/jadwal_mengajar_page.dart';
@@ -138,9 +142,7 @@ class _HomePageState extends State<HomePage> {
                   onProfileTap: () => _goToProfile(profileIndex),
                   onRefresh: _refreshHome,
                 ),
-                ClassRecapListPage(
-                  onBack: () => _selectTab(0),
-                ),
+                ClassRecapListPage(onBack: () => _selectTab(0)),
                 UserProfilePage(
                   userFuture: _userFuture,
                   authService: _authService,
@@ -322,7 +324,7 @@ class _AlumniHomeDashboard extends StatelessWidget {
 // ============================================================================
 // WIDGET KHUSUS SISWA / GURU (HEADER BIRU + MENU KOTAK)
 // ============================================================================
-class _HomeDashboard extends StatelessWidget {
+class _HomeDashboard extends StatefulWidget {
   final Future<AuthUser?> userFuture;
   final VoidCallback onProfileTap;
   final Future<void> Function() onRefresh;
@@ -335,11 +337,16 @@ class _HomeDashboard extends StatelessWidget {
   });
 
   @override
+  State<_HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<_HomeDashboard> {
+  @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
       color: _HomePageState.primaryBlue,
       displacement: 12,
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(
           parent: ClampingScrollPhysics(),
@@ -349,13 +356,15 @@ class _HomeDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _HeaderSection(
-              userFuture: userFuture,
-              onProfileTap: onProfileTap,
-              onRefresh: onRefresh,
+              userFuture: widget.userFuture,
+              onProfileTap: widget.onProfileTap,
+              onRefresh: widget.onRefresh,
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
+            const _DashboardBannerCarousel(),
+            const SizedBox(height: 24),
             FutureBuilder<AuthUser?>(
-              future: userFuture,
+              future: widget.userFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const SizedBox(
@@ -365,7 +374,13 @@ class _HomeDashboard extends StatelessWidget {
                 }
 
                 if (snapshot.data?.role == 'parent') {
-                  return const _ParentTodayAttendanceSection();
+                  return const Column(
+                    children: [
+                      _ParentTodayAttendanceSection(),
+                      SizedBox(height: 24),
+                      _EducationInformationSection(),
+                    ],
+                  );
                 }
 
                 if (snapshot.data?.role == 'student') {
@@ -376,11 +391,19 @@ class _HomeDashboard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: _StudentQuickAccessCard(),
                       ),
+                      const SizedBox(height: 24),
+                      const _EducationInformationSection(),
                     ],
                   );
                 }
 
-                return _MenuSection(userFuture: userFuture);
+                return Column(
+                  children: [
+                    _MenuSection(userFuture: widget.userFuture),
+                    const SizedBox(height: 28),
+                    const _EducationInformationSection(),
+                  ],
+                );
               },
             ),
           ],
@@ -410,203 +433,505 @@ class _HeaderSection extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, topPadding + 24, 24, 40),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 16, 20, 12),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE))),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Background Icon Pattern
-          Positioned(
-            right: -20,
-            bottom: -20,
-            child: Transform.rotate(
-              angle: -0.2,
-              child: const Icon(
-                Icons.auto_stories_rounded,
-                size: 140,
-                color: Colors.white10,
-              ),
-            ),
-          ),
+      child: FutureBuilder<AuthUser?>(
+        future: userFuture,
+        builder: (context, snapshot) {
+          final user = snapshot.data;
 
-          // Main Content
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          return Row(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // --- AVATAR YANG BISA DIKLIK ---
-                  GestureDetector(
-                    onTap: onProfileTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                      child: const CircleAvatar(
-                        radius: 26,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.person_rounded,
-                          size: 30,
-                          color: Color(0xFF1E88E5),
-                        ),
-                      ),
+              GestureDetector(
+                onTap: onProfileTap,
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: _HomePageState.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _getInitials(user?.name),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: FutureBuilder<AuthUser?>(
-                      future: userFuture,
-                      builder: (context, snapshot) {
-                        final user = snapshot.data;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Halo, ${user?.name ?? 'Pengguna'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                _formatRole(user?.role),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  AnimatedBuilder(
-                    animation: NotificationController.instance,
-                    builder: (context, _) {
-                      final unreadCount =
-                          NotificationController.instance.unreadCount;
-
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          IconButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const NotificationPage(),
-                                ),
-                              );
-                              NotificationController.instance
-                                  .refreshUnreadCount();
-                            },
-                            icon: const Icon(
-                              Icons.notifications_none_rounded,
-                              color: Colors.white,
-                            ),
-                            tooltip: 'Notifikasi',
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(
-                                alpha: 0.15,
-                              ),
-                              padding: const EdgeInsets.all(10),
-                            ),
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: -2,
-                              top: -2,
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Text(
-                                  unreadCount > 99
-                                      ? '99+'
-                                      : unreadCount.toString(),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-              const Text(
-                'Sistem Digital Sekolah',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  height: 1.2,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Informasi akademik dan layanan sekolah tersedia dalam satu dashboard.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 14,
-                  height: 1.4,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Halo, ${user?.name ?? 'Pengguna'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF1F2937),
+                        fontSize: 18,
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        text: 'Selamat datang, ',
+                        children: [
+                          TextSpan(
+                            text: _formatRole(user?.role),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              AnimatedBuilder(
+                animation: NotificationController.instance,
+                builder: (context, _) {
+                  final unreadCount =
+                      NotificationController.instance.unreadCount;
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NotificationPage(),
+                            ),
+                          );
+                          NotificationController.instance.refreshUnreadCount();
+                        },
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Color(0xFF374151),
+                        ),
+                        tooltip: 'Notifikasi',
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFF3F4F6),
+                          padding: const EdgeInsets.all(10),
+                        ),
+                      ),
+                      if (unreadCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : unreadCount.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _getInitials(String? name) {
+    final parts = (name ?? '').trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'PG';
+    final first = parts.first[0];
+    final second = parts.length > 1 && parts[1].isNotEmpty ? parts[1][0] : '';
+    return '$first$second'.toUpperCase();
+  }
+}
+
+class _DashboardBannerData {
+  final String imageAsset;
+
+  const _DashboardBannerData({required this.imageAsset});
+}
+
+class _DashboardBannerCarousel extends StatefulWidget {
+  const _DashboardBannerCarousel();
+
+  @override
+  State<_DashboardBannerCarousel> createState() =>
+      _DashboardBannerCarouselState();
+}
+
+class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
+  static const List<_DashboardBannerData> _banners = [
+    _DashboardBannerData(
+      imageAsset: 'assets/images/home/sistem_presensi_digital.png',
+    ),
+    _DashboardBannerData(
+      imageAsset: 'assets/images/home/hari_pendidikan_nasional_2026.png',
+    ),
+    _DashboardBannerData(
+      imageAsset: 'assets/images/home/hut_kemerdekaan_2026.png',
+    ),
+  ];
+
+  late final PageController _pageController;
+  Timer? _timer;
+  int _activeIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.91);
+    _startAutoSlide();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startAutoSlide() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients) return;
+
+      final nextIndex = (_activeIndex + 1) % _banners.length;
+      _pageController.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  void _handlePageChanged(int index) {
+    setState(() => _activeIndex = index);
+    _startAutoSlide();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 144,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: _banners.length,
+            onPageChanged: _handlePageChanged,
+            itemBuilder: (context, index) {
+              final banner = _banners[index];
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _DashboardBannerCard(banner: banner),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_banners.length, (index) {
+            final isActive = index == _activeIndex;
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: isActive ? 16 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: isActive
+                    ? _HomePageState.primaryBlue
+                    : const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardBannerCard extends StatelessWidget {
+  final _DashboardBannerData banner;
+
+  const _DashboardBannerCard({required this.banner});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.asset(
+        banner.imageAsset,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: const Color(0xFFF3F4F6),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.image_not_supported_outlined,
+            color: Color(0xFF6B7280),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EducationInformationSection extends StatefulWidget {
+  const _EducationInformationSection();
+
+  @override
+  State<_EducationInformationSection> createState() =>
+      _EducationInformationSectionState();
+}
+
+class _EducationInformationSectionState
+    extends State<_EducationInformationSection> {
+  final EducationNewsService _service = EducationNewsService();
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<EducationNews> _articles = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNews();
+  }
+
+  Future<void> _loadNews() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final articles = await _service.fetchLatest();
+      if (!mounted) return;
+      setState(() {
+        _articles = articles;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Informasi pendidikan sedang tidak tersedia.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Informasi Pendidikan',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF1F2937),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Kabar dan wawasan terbaru dari sumber pendidikan resmi.',
+            style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(height: 14),
+          if (_isLoading)
+            const SizedBox(
+              height: 100,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_errorMessage != null)
+            _EducationInformationError(
+              message: _errorMessage!,
+              onRetry: _loadNews,
+            )
+          else if (_articles.isEmpty)
+            const Text(
+              'Belum ada informasi pendidikan terbaru.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            )
+          else
+            ..._articles.map(
+              (article) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _EducationInformationCard(article: article),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EducationInformationCard extends StatelessWidget {
+  final EducationNews article;
+
+  const _EducationInformationCard({required this.article});
+
+  Future<void> _openArticle() async {
+    final uri = Uri.parse(article.articleUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      child: InkWell(
+        onTap: _openArticle,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(
+                  article.imageUrl,
+                  width: 108,
+                  height: 78,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 108,
+                    height: 78,
+                    color: const Color(0xFFF3F4F6),
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.school_outlined,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      article.title,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${article.source} · ${article.publishedAt}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  Icons.open_in_new,
+                  size: 16,
+                  color: Color(0xFF6B7280),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EducationInformationError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _EducationInformationError({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
         ],
       ),
     );
@@ -899,17 +1224,10 @@ class _ParentInfoCardEmpty extends StatelessWidget {
 }
 
 class _MenuItemData {
-  final IconData icon;
+  final String iconAsset;
   final String label;
-  final Color backgroundColor;
-  final Color iconColor;
 
-  const _MenuItemData({
-    required this.icon,
-    required this.label,
-    required this.backgroundColor,
-    required this.iconColor,
-  });
+  const _MenuItemData({required this.iconAsset, required this.label});
 }
 
 class _StudentQuickAccessCard extends StatefulWidget {
@@ -921,209 +1239,92 @@ class _StudentQuickAccessCard extends StatefulWidget {
 }
 
 class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
-  final StudentAttendanceService _service = StudentAttendanceService();
-
-  bool _isLoading = true;
-  String? _errorMessage;
-  String _studentName = '-';
-  List<StudentAttendanceRecord> _records = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAttendance();
-  }
-
-  Future<void> _loadAttendance() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final summary = await _service.fetchCurrentStudentAttendance(
-        month: DateTime.now().month,
-        year: DateTime.now().year,
-      );
-      if (!mounted) return;
-      setState(() {
-        _studentName = summary.profile?.name ?? '-';
-        _records = summary.records;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Tidak bisa memuat riwayat kehadiran saat ini.';
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Riwayat Kehadiran',
+          'Kehadiran Saya',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F2937),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Daftar kehadiran terbaru Anda bulan ini.',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-        ),
         const SizedBox(height: 12),
-        if (_isLoading)
-          const SizedBox(
-            height: 80,
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_errorMessage != null)
-          Text(
-            _errorMessage!,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          )
-        else if (_records.isEmpty)
-          const Text(
-            'Belum ada data kehadiran bulan ini.',
-            style: TextStyle(fontSize: 13, color: Colors.black54),
-          )
-        else
-          _StudentAttendanceTable(studentName: _studentName, records: _records),
-      ],
-    );
-  }
-}
-
-class _StudentAttendanceTable extends StatelessWidget {
-  final String studentName;
-  final List<StudentAttendanceRecord> records;
-
-  const _StudentAttendanceTable({
-    required this.studentName,
-    required this.records,
-  });
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  String _formatAttendanceTime(StudentAttendanceRecord record) {
-    final time = record.checkInTime;
-    if (time == null || time.trim().isEmpty) {
-      return _formatDate(record.date);
-    }
-
-    return '${_formatDate(record.date)}\n$time';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height:
-          records.length * 74 +
-          42, // Perkiraan tinggi tabel berdasarkan jumlah baris
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  headingRowHeight: 42,
-                  dataRowMinHeight: 50,
-                  dataRowMaxHeight: 74,
-                  horizontalMargin: 8,
-                  columnSpacing: 14,
-                  border: TableBorder.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1.2,
+        Material(
+          color: Colors.white,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AttendanceHistoryPage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _HomePageState.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_outlined,
+                      color: _HomePageState.primaryBlue,
+                      size: 26,
+                    ),
                   ),
-                  headingTextStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black54,
-                  ),
-                  dataTextStyle: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                  columns: const [
-                    DataColumn(label: Text('No')),
-                    DataColumn(label: Text('Nama')),
-                    DataColumn(label: Text('Waktu Presensi')),
-                    DataColumn(label: Text('Status Presensi')),
-                  ],
-                  rows: List.generate(records.length, (index) {
-                    final record = records[index];
-                    return DataRow(
-                      cells: [
-                        DataCell(Text('${index + 1}')),
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minWidth: 120,
-                              maxWidth: 240,
-                            ),
-                            child: Text(
-                              studentName,
-                              softWrap: true,
-                              overflow: TextOverflow.visible,
-                            ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Riwayat Kehadiran',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F2937),
                           ),
                         ),
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minWidth: 150,
-                              maxWidth: 240,
-                            ),
-                            child: Text(
-                              _formatAttendanceTime(record),
-                              softWrap: true,
-                            ),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            record.statusLabel,
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Lihat status presensi dan filter berdasarkan bulan.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: Color(0xFF64748B),
                           ),
                         ),
                       ],
-                    );
-                  }),
-                ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 17,
+                    color: Color(0xFF64748B),
+                  ),
+                ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1135,40 +1336,28 @@ class _MenuSection extends StatelessWidget {
 
   static const List<_MenuItemData> _items = [
     _MenuItemData(
-      icon: Icons.schedule_outlined,
-      label: 'Jadwal Mengajar',
-      backgroundColor: Color(0xFFE3F2FD),
-      iconColor: Color(0xFF1E88E5),
-    ),
-    _MenuItemData(
-      icon: Icons.event_available_outlined,
+      iconAsset: 'assets/icons/home/presensi_siswa.png',
       label: 'Presensi Siswa',
-      backgroundColor: Color(0xFFFFDDE8),
-      iconColor: Color(0xFFE84393),
     ),
     _MenuItemData(
-      icon: Icons.assignment_outlined,
-      label: 'Lihat Kelas Anda',
-      backgroundColor: Color(0xFFFFE9CD),
-      iconColor: Color(0xFFF39C12),
+      iconAsset: 'assets/icons/home/jadwal.svg',
+      label: 'Jadwal Mengajar',
     ),
     _MenuItemData(
-      icon: Icons.history_outlined,
+      iconAsset: 'assets/icons/home/kelas.svg',
+      label: 'Kelas Siswa',
+    ),
+    _MenuItemData(
+      iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
       label: 'Riwayat Kehadiran',
-      backgroundColor: Color(0xFFFFD6D9),
-      iconColor: Color(0xFFE53935),
     ),
     _MenuItemData(
-      icon: Icons.qr_code_scanner_outlined,
+      iconAsset: 'assets/icons/home/presensi_qr.png',
       label: 'Presensi QR',
-      backgroundColor: Color(0xFFD4FFF2),
-      iconColor: Color(0xFF20C997),
     ),
     _MenuItemData(
-      icon: Icons.analytics_outlined,
-      label: 'Lihat Kehadiran Siswa',
-      backgroundColor: Color(0xFFDDEBFF),
-      iconColor: Color(0xFF2F80ED),
+      iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
+      label: 'Kehadiran Siswa',
     ),
   ];
 
@@ -1183,43 +1372,48 @@ class _MenuSection extends StatelessWidget {
             .toList();
 
         return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Menu Utama',
+                'Layanan Sekolah',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A1A),
-                  letterSpacing: -0.5,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F2937),
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(
-                'Pilih fitur layanan yang ingin Anda gunakan.',
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 0),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: items.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.72,
+              const SizedBox(height: 16),
+              if (items.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 28),
+                  child: Center(
+                    child: Text(
+                      'Layanan tidak ditemukan.',
+                      style: TextStyle(color: Color(0xFF6B7280)),
+                    ),
+                  ),
+                )
+              else
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: items.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 18,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.92,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return _MenuTile(
+                      item: item,
+                      onTap: () => _handleMenuTap(context, item),
+                    );
+                  },
                 ),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return _MenuTile(
-                    item: item,
-                    onTap: () => _handleMenuTap(context, item),
-                  );
-                },
-              ),
             ],
           ),
         );
@@ -1253,8 +1447,8 @@ class _MenuSection extends StatelessWidget {
 
     final Widget page = switch (item.label) {
       'Jadwal Mengajar' => const JadwalMengajarPage(),
-      'Lihat Kelas Anda' => const ClassRecapListPage(),
-      'Lihat Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
+      'Kelas Siswa' => const ClassRecapListPage(),
+      'Kehadiran Siswa' => const AttendanceRecapSelectClassPage(),
       _ => const SelectClassDatePage(mode: PresensiEntryMode.manual),
     };
 
@@ -1270,40 +1464,72 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      highlightColor: item.backgroundColor.withValues(alpha: 0.3),
-      splashColor: item.backgroundColor.withValues(alpha: 0.5),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: item.backgroundColor,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(item.icon, color: item.iconColor, size: 32),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: Text(
-              item.label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                height: 1.2,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
+    return Material(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFDCE3EA)),
       ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        highlightColor: _HomePageState.primaryBlue.withValues(alpha: 0.07),
+        splashColor: _HomePageState.primaryBlue.withValues(alpha: 0.14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _EducationMenuIcon(item: item),
+              const SizedBox(height: 9),
+              Text(
+                item.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.24,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2F2F2F),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EducationMenuIcon extends StatelessWidget {
+  final _MenuItemData item;
+
+  const _EducationMenuIcon({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!item.iconAsset.toLowerCase().endsWith('.svg')) {
+      return Image.asset(
+        item.iconAsset,
+        width: 58,
+        height: 54,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.image_not_supported_outlined,
+          size: 42,
+          color: Colors.grey,
+        ),
+      );
+    }
+
+    return SvgPicture.asset(
+      item.iconAsset,
+      width: 58,
+      height: 54,
+      fit: BoxFit.contain,
     );
   }
 }
