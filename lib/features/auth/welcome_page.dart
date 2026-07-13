@@ -7,9 +7,10 @@ class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
   static const Color primaryBlue = Color(0xFF3E87D8);
-  static const Color lightBlue = Color(0xFFCFEFFF);
   static const Color accentBlue = Color(0xFF74B9FF);
   static const Color white = Color(0xFFFFFFFF);
+  static const String welcomeImage =
+      'assets/images/home/splash/splashwelcome.png';
 
   void _goToLogin(BuildContext context) {
     Navigator.push(
@@ -28,101 +29,112 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          color: white,
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                const Spacer(),
-                Container(
-                  width: 128,
-                  height: 128,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: primaryBlue.withValues(alpha: 0.22),
-                        blurRadius: 30,
-                        offset: const Offset(0, 16),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.school_rounded,
-                    size: 70,
-                    color: primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Text(
-                  'Aplikasi Presensi Sekolah Digital',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 30,
-                    height: 1.15,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF12395B),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Pantau presensi siswa, rekap kehadiran, dan akses alumni dalam satu aplikasi.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: Color(0xFF4B6C85),
-                  ),
-                ),
-                const SizedBox(height: 34),
-                _PrimaryActionButton(
-                  label: 'Masuk',
-                  icon: Icons.login_rounded,
-                  onPressed: () => _goToLogin(context),
-                ),
-                const SizedBox(height: 14),
-                _SecondaryActionButton(
-                  label: 'Daftar sebagai Alumni',
-                  icon: Icons.person_add_alt_1_rounded,
-                  onPressed: () => _goToAlumniRegister(context),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.72),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.verified_rounded, color: accentBlue, size: 18),
-                      SizedBox(width: 8),
-                      Text(
-                        'Cepat, aman, dan mudah digunakan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF4B6C85),
+      backgroundColor: white,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final heroHeight = constraints.maxHeight * 0.58;
+
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    height: heroHeight,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(
+                          welcomeImage,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
                         ),
-                      ),
-                    ],
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              stops: [0.52, 0.78, 1],
+                              colors: [
+                                Colors.transparent,
+                                Color(0x33FFFFFF),
+                                Colors.white,
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-              ],
+                  Transform.translate(
+                    offset: const Offset(0, -24),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Column(
+                        children: [
+                          const Text(
+                            '',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 28,
+                              height: 1.15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF12395B),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Pantau presensi siswa, rekap kehadiran, dan akses alumni dalam satu aplikasi.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.5,
+                              color: Color(0xFF4B6C85),
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          _PrimaryActionButton(
+                            label: 'Masuk',
+                            icon: Icons.login_rounded,
+                            onPressed: () => _goToLogin(context),
+                          ),
+                          const SizedBox(height: 12),
+                          _SecondaryActionButton(
+                            label: 'Daftar sebagai Alumni',
+                            icon: Icons.person_add_alt_1_rounded,
+                            onPressed: () => _goToAlumniRegister(context),
+                          ),
+                          const SizedBox(height: 24),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.verified_rounded,
+                                color: accentBlue,
+                                size: 17,
+                              ),
+                              SizedBox(width: 7),
+                              Text(
+                                'Cepat, aman, dan mudah digunakan',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF4B6C85),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -143,7 +155,7 @@ class _PrimaryActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 52,
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon),
@@ -151,11 +163,10 @@ class _PrimaryActionButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: WelcomePage.primaryBlue,
           foregroundColor: Colors.white,
-          elevation: 8,
-          shadowColor: WelcomePage.primaryBlue.withValues(alpha: 0.32),
+          elevation: 0,
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -178,7 +189,7 @@ class _SecondaryActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 52,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon),
@@ -189,7 +200,7 @@ class _SecondaryActionButton extends StatelessWidget {
           side: const BorderSide(color: WelcomePage.primaryBlue, width: 1.4),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),

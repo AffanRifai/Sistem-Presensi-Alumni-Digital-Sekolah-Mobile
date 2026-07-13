@@ -15,8 +15,8 @@ import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
-import '../siswa/data/student_attendance_models.dart';
-import '../siswa/data/student_attendance_service.dart';
+import '../siswa/riwayat_kehadiran_page.dart';
+import 'data/education_news_service.dart';
 import 'data/parent_today_attendance_service.dart';
 import 'user_profile_page.dart';
 import '../jadwal_mengajar/jadwal_mengajar_page.dart';
@@ -341,8 +341,6 @@ class _HomeDashboard extends StatefulWidget {
 }
 
 class _HomeDashboardState extends State<_HomeDashboard> {
-  String _serviceQuery = '';
-
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -361,26 +359,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               userFuture: widget.userFuture,
               onProfileTap: widget.onProfileTap,
               onRefresh: widget.onRefresh,
-            ),
-            const SizedBox(height: 18),
-            FutureBuilder<AuthUser?>(
-              future: widget.userFuture,
-              builder: (context, snapshot) {
-                if (snapshot.data?.role != 'teacher') {
-                  return const SizedBox.shrink();
-                }
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _ServiceSearchField(
-                    onChanged: (value) {
-                      setState(
-                        () => _serviceQuery = value.trim().toLowerCase(),
-                      );
-                    },
-                  ),
-                );
-              },
             ),
             const SizedBox(height: 18),
             const _DashboardBannerCarousel(),
@@ -421,10 +399,7 @@ class _HomeDashboardState extends State<_HomeDashboard> {
 
                 return Column(
                   children: [
-                    _MenuSection(
-                      userFuture: widget.userFuture,
-                      searchQuery: _serviceQuery,
-                    ),
+                    _MenuSection(userFuture: widget.userFuture),
                     const SizedBox(height: 28),
                     const _EducationInformationSection(),
                   ],
@@ -432,39 +407,6 @@ class _HomeDashboardState extends State<_HomeDashboard> {
               },
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ServiceSearchField extends StatelessWidget {
-  final ValueChanged<String> onChanged;
-
-  const _ServiceSearchField({required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Cari layanan...',
-        hintStyle: const TextStyle(color: Color(0xFF8A8A8A)),
-        prefixIcon: const Icon(Icons.search, color: _HomePageState.primaryBlue),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFFD5D5D5)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(
-            color: _HomePageState.primaryBlue,
-            width: 1.4,
-          ),
         ),
       ),
     );
@@ -648,15 +590,9 @@ class _HeaderSection extends StatelessWidget {
 }
 
 class _DashboardBannerData {
-  final String title;
-  final String subtitle;
-  final String imageUrl;
+  final String imageAsset;
 
-  const _DashboardBannerData({
-    required this.title,
-    required this.subtitle,
-    required this.imageUrl,
-  });
+  const _DashboardBannerData({required this.imageAsset});
 }
 
 class _DashboardBannerCarousel extends StatefulWidget {
@@ -670,22 +606,13 @@ class _DashboardBannerCarousel extends StatefulWidget {
 class _DashboardBannerCarouselState extends State<_DashboardBannerCarousel> {
   static const List<_DashboardBannerData> _banners = [
     _DashboardBannerData(
-      title: 'Presensi Lebih Tertata',
-      subtitle: 'Pantau kehadiran siswa langsung dari dashboard.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+      imageAsset: 'assets/images/home/sistem_presensi_digital.png',
     ),
     _DashboardBannerData(
-      title: 'Rekap Kelas Siap Dipantau',
-      subtitle: 'Lihat ringkasan kelas dan data akademik lebih cepat.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80',
+      imageAsset: 'assets/images/home/hari_pendidikan_nasional_2026.png',
     ),
     _DashboardBannerData(
-      title: 'Aktivitas Sekolah Digital',
-      subtitle: 'Semua informasi penting tersaji dalam satu aplikasi.',
-      imageUrl:
-          'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80',
+      imageAsset: 'assets/images/home/hut_kemerdekaan_2026.png',
     ),
   ];
 
@@ -780,136 +707,65 @@ class _DashboardBannerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.network(
-            banner.imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: _HomePageState.primaryBlue.withValues(alpha: 0.12),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: _HomePageState.primaryBlue,
-                ),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-
-              return Container(
-                color: const Color(0xFFEFF6FF),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
+      child: Image.asset(
+        banner.imageAsset,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => Container(
+          color: const Color(0xFFF3F4F6),
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.image_not_supported_outlined,
+            color: Color(0xFF6B7280),
           ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Colors.black.withValues(alpha: 0.62),
-                  Colors.black.withValues(alpha: 0.2),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            bottom: 18,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  banner.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  banner.subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 12.5,
-                    height: 1.3,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _EducationInformationData {
-  final String title;
-  final String source;
-  final String date;
-  final String imageUrl;
-  final String articleUrl;
-
-  const _EducationInformationData({
-    required this.title,
-    required this.source,
-    required this.date,
-    required this.imageUrl,
-    required this.articleUrl,
-  });
-}
-
-class _EducationInformationSection extends StatelessWidget {
+class _EducationInformationSection extends StatefulWidget {
   const _EducationInformationSection();
 
-  static const List<_EducationInformationData> _articles = [
-    _EducationInformationData(
-      title: 'Standar Proses Baru Mendukung Pembelajaran Mendalam',
-      source: 'Kemendikdasmen',
-      date: '9 Juli 2026',
-      imageUrl:
-          'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=900&q=80',
-      articleUrl:
-          'https://bbpmpjatim.kemendikdasmen.go.id/main/standar-proses-baru-jadi-dasar-penerapan-pembelajaran-mendalam-pada-seluruh-jenjang-pendidikan/',
-    ),
-    _EducationInformationData(
-      title: 'Sekolah Aman dan Nyaman bagi Guru serta Siswa',
-      source: 'Kemendikdasmen',
-      date: '3 April 2026',
-      imageUrl:
-          'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=900&q=80',
-      articleUrl:
-          'https://www.kemendikdasmen.go.id/siaran-pers/14998-mendikdasmen-sekolah-harus-jadi-ruang-aman-dan-nyaman-yang-m',
-    ),
-    _EducationInformationData(
-      title: 'Digitalisasi Membuat Pembelajaran Lebih Interaktif',
-      source: 'Kemendikdasmen',
-      date: '5 Mei 2026',
-      imageUrl:
-          'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
-      articleUrl:
-          'https://www.kemendikdasmen.go.id/siaran-pers/15302-revitalisasi-dan-digitalisasi-ubah-wajah-sma-pasundan-3-band',
-    ),
-  ];
+  @override
+  State<_EducationInformationSection> createState() =>
+      _EducationInformationSectionState();
+}
+
+class _EducationInformationSectionState
+    extends State<_EducationInformationSection> {
+  final EducationNewsService _service = EducationNewsService();
+
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<EducationNews> _articles = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNews();
+  }
+
+  Future<void> _loadNews() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final articles = await _service.fetchLatest();
+      if (!mounted) return;
+      setState(() {
+        _articles = articles;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Informasi pendidikan sedang tidak tersedia.';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -932,12 +788,28 @@ class _EducationInformationSection extends StatelessWidget {
             style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
           ),
           const SizedBox(height: 14),
-          ..._articles.map(
-            (article) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _EducationInformationCard(article: article),
+          if (_isLoading)
+            const SizedBox(
+              height: 100,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (_errorMessage != null)
+            _EducationInformationError(
+              message: _errorMessage!,
+              onRetry: _loadNews,
+            )
+          else if (_articles.isEmpty)
+            const Text(
+              'Belum ada informasi pendidikan terbaru.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            )
+          else
+            ..._articles.map(
+              (article) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _EducationInformationCard(article: article),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -945,7 +817,7 @@ class _EducationInformationSection extends StatelessWidget {
 }
 
 class _EducationInformationCard extends StatelessWidget {
-  final _EducationInformationData article;
+  final EducationNews article;
 
   const _EducationInformationCard({required this.article});
 
@@ -1007,7 +879,7 @@ class _EducationInformationCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${article.source} · ${article.date}',
+                      '${article.source} · ${article.publishedAt}',
                       style: const TextStyle(
                         fontSize: 11.5,
                         color: Color(0xFF6B7280),
@@ -1027,6 +899,40 @@ class _EducationInformationCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EducationInformationError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _EducationInformationError({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+        ],
       ),
     );
   }
@@ -1333,218 +1239,100 @@ class _StudentQuickAccessCard extends StatefulWidget {
 }
 
 class _StudentQuickAccessCardState extends State<_StudentQuickAccessCard> {
-  final StudentAttendanceService _service = StudentAttendanceService();
-
-  bool _isLoading = true;
-  String? _errorMessage;
-  String _studentName = '-';
-  List<StudentAttendanceRecord> _records = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadAttendance();
-  }
-
-  Future<void> _loadAttendance() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final summary = await _service.fetchCurrentStudentAttendance(
-        month: DateTime.now().month,
-        year: DateTime.now().year,
-      );
-      if (!mounted) return;
-      setState(() {
-        _studentName = summary.profile?.name ?? '-';
-        _records = summary.records;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = 'Tidak bisa memuat riwayat kehadiran saat ini.';
-        _isLoading = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Riwayat Kehadiran',
+          'Kehadiran Saya',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
+            fontSize: 19,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1F2937),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Daftar kehadiran terbaru Anda bulan ini.',
-          style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-        ),
         const SizedBox(height: 12),
-        if (_isLoading)
-          const SizedBox(
-            height: 80,
-            child: Center(child: CircularProgressIndicator()),
-          )
-        else if (_errorMessage != null)
-          Text(
-            _errorMessage!,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          )
-        else if (_records.isEmpty)
-          const Text(
-            'Belum ada data kehadiran bulan ini.',
-            style: TextStyle(fontSize: 13, color: Colors.black54),
-          )
-        else
-          _StudentAttendanceTable(studentName: _studentName, records: _records),
-      ],
-    );
-  }
-}
-
-class _StudentAttendanceTable extends StatelessWidget {
-  final String studentName;
-  final List<StudentAttendanceRecord> records;
-
-  const _StudentAttendanceTable({
-    required this.studentName,
-    required this.records,
-  });
-
-  String _formatDate(DateTime date) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'Mei',
-      'Jun',
-      'Jul',
-      'Agu',
-      'Sep',
-      'Okt',
-      'Nov',
-      'Des',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  String _formatAttendanceTime(StudentAttendanceRecord record) {
-    final time = record.checkInTime;
-    if (time == null || time.trim().isEmpty) {
-      return _formatDate(record.date);
-    }
-
-    return '${_formatDate(record.date)}\n$time';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height:
-          records.length * 74 +
-          42, // Perkiraan tinggi tabel berdasarkan jumlah baris
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  headingRowHeight: 42,
-                  dataRowMinHeight: 50,
-                  dataRowMaxHeight: 74,
-                  horizontalMargin: 8,
-                  columnSpacing: 14,
-                  border: TableBorder.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1.2,
+        Material(
+          color: Colors.white,
+          child: InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AttendanceHistoryPage(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _HomePageState.primaryBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_outlined,
+                      color: _HomePageState.primaryBlue,
+                      size: 26,
+                    ),
                   ),
-                  headingTextStyle: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black54,
-                  ),
-                  dataTextStyle: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                  ),
-                  columns: const [
-                    DataColumn(label: Text('No')),
-                    DataColumn(label: Text('Nama')),
-                    DataColumn(label: Text('Waktu Presensi')),
-                    DataColumn(label: Text('Status Presensi')),
-                  ],
-                  rows: List.generate(records.length, (index) {
-                    final record = records[index];
-                    return DataRow(
-                      cells: [
-                        DataCell(Text('${index + 1}')),
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minWidth: 120,
-                              maxWidth: 240,
-                            ),
-                            child: Text(
-                              studentName,
-                              softWrap: true,
-                              overflow: TextOverflow.visible,
-                            ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Riwayat Kehadiran',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F2937),
                           ),
                         ),
-                        DataCell(
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              minWidth: 150,
-                              maxWidth: 240,
-                            ),
-                            child: Text(
-                              _formatAttendanceTime(record),
-                              softWrap: true,
-                            ),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            record.statusLabel,
-                            style: const TextStyle(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        SizedBox(height: 5),
+                        Text(
+                          'Lihat status presensi dan filter berdasarkan bulan.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: Color(0xFF64748B),
                           ),
                         ),
                       ],
-                    );
-                  }),
-                ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 17,
+                    color: Color(0xFF64748B),
+                  ),
+                ],
               ),
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _MenuSection extends StatelessWidget {
   final Future<AuthUser?> userFuture;
-  final String searchQuery;
 
-  const _MenuSection({required this.userFuture, this.searchQuery = ''});
+  const _MenuSection({required this.userFuture});
 
   static const List<_MenuItemData> _items = [
     _MenuItemData(
@@ -1581,7 +1369,6 @@ class _MenuSection extends StatelessWidget {
         final role = snapshot.data?.role;
         final items = _items
             .where((item) => _isMenuVisibleForRole(item.label, role))
-            .where((item) => item.label.toLowerCase().contains(searchQuery))
             .toList();
 
         return Padding(
@@ -1677,31 +1464,40 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      highlightColor: _HomePageState.primaryBlue.withValues(alpha: 0.08),
-      splashColor: _HomePageState.primaryBlue.withValues(alpha: 0.12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _EducationMenuIcon(item: item),
-            const SizedBox(height: 9),
-            Text(
-              item.label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 14,
-                height: 1.24,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2F2F2F),
+    return Material(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black.withValues(alpha: 0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFDCE3EA)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        highlightColor: _HomePageState.primaryBlue.withValues(alpha: 0.07),
+        splashColor: _HomePageState.primaryBlue.withValues(alpha: 0.14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _EducationMenuIcon(item: item),
+              const SizedBox(height: 9),
+              Text(
+                item.label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 14,
+                  height: 1.24,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF2F2F2F),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
