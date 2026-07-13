@@ -164,7 +164,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
     final today   = _weekOrder[now.weekday - 1];
     final entry   = _findEntry(data, today);
 
-    if (entry != null) {
+    if (entry != null && entry.value.isNotEmpty) {
       for (var i = 0; i < entry.value.length; i++) {
         final s = _toMin(entry.value[i].startTime);
         final e = _toMin(entry.value[i].endTime);
@@ -178,6 +178,8 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
           return _ActiveSchedule(dayKey: entry.key, index: i, isOngoing: false);
         }
       }
+      // Jika semua kelas hari ini sudah selesai, tetap posisikan hari aktif di hari ini tanpa menyorot kartu apa pun
+      return _ActiveSchedule(dayKey: entry.key, index: -1, isOngoing: false);
     }
     for (var offset = 1; offset <= 6; offset++) {
       final key   = _weekOrder[(now.weekday - 1 + offset) % 7];
@@ -193,7 +195,9 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
       Map<String, List<ScheduleItem>> data, _ActiveSchedule a) {
     final flat = <MapEntry<String, int>>[];
     for (final key in data.keys) {
-      for (var i = 0; i < data[key]!.length; i++) flat.add(MapEntry(key, i));
+      for (var i = 0; i < data[key]!.length; i++) {
+        flat.add(MapEntry(key, i));
+      }
     }
     final pos = flat.indexWhere((e) => e.key == a.dayKey && e.value == a.index);
     if (pos == -1 || pos + 1 >= flat.length) return null;
@@ -503,8 +507,7 @@ class _DaySection extends StatelessWidget {
 
 // ═══════════════════════════════════════════════════════════════════════
 // Kartu jadwal — TANPA IntrinsicHeight (fix jank)
-// Garis timeline digambar sebagai latar CustomPainter agar tidak butuh
-// IntrinsicHeight. Kartu tumbuh alami, painter menyesuaikan.
+// Garis timeline digambar menggunakan Stack agar garis bersambung sempurna.
 // ═══════════════════════════════════════════════════════════════════════
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
@@ -521,7 +524,6 @@ class _ScheduleCard extends StatelessWidget {
   static const Color _amber    = Color(0xFFF59E0B);
   static const Color _amberSoft = Color(0xFFFEF3E0);
   static const Color _dark     = Color(0xFF0F172A);
-  static const Color _muted    = Color(0xFF64748B);
   static const Color _divider  = Color(0xFFE2E8F0);
 
   @override
@@ -532,149 +534,122 @@ class _ScheduleCard extends StatelessWidget {
     final Color? accent = isOngoing ? _blue : (isNext ? _amber : null);
     final Color cardBg  = isOngoing ? _blueSoft : (isNext ? _amberSoft : Colors.white);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Timeline: CustomPainter tahu tinggi sendiri ─────────────
-          SizedBox(
-            width: 28,
-            child: CustomPaint(
-              painter: _DotLinePainter(
-                isFirst:   effectiveFirst,
-                isLast:    effectiveLast,
-                dotColor:  accent ?? _blue,
-                lineColor: _divider,
-              ),
-            ),
+    // Timeline line position
+    const double lineLeft = 14.0;
+    const double lineWidth = 2.0;
+    // Dot center Y
+    const double dotY = 24.0;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // ── Timeline: Garis atas ──
+        if (!effectiveFirst)
+          Positioned(
+            top: 0,
+            bottom: null,
+            height: dotY,
+            left: lineLeft,
+            child: Container(width: lineWidth, color: _divider),
           ),
-          const SizedBox(width: 8),
-          // ── Konten kartu ───────────────────────────────────────────
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: accent ?? _divider,
-                  width: accent != null ? 1.5 : 1,
+          
+        // ── Timeline: Garis bawah ──
+        if (!effectiveLast)
+          Positioned(
+            top: dotY,
+            bottom: 0, // Garis memanjang sampai ke akhir Stack (termasuk bottom margin)
+            left: lineLeft,
+            child: Container(width: lineWidth, color: _divider),
+          ),
+
+        // ── Konten kartu ───────────────────────────────────────────
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(left: 36),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: accent ?? _divider,
+                width: accent != null ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8, offset: const Offset(0, 3),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8, offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Waktu + badge
-                  Row(
-                    children: [
-                      _TimeChip(
-                        start: schedule.startTime, end: schedule.endTime),
-                      const Spacer(),
-                      if (isOngoing)
-                        _Badge(label: 'Berlangsung', color: _blue, icon: Icons.podcasts_rounded)
-                      else if (isNext)
-                        _Badge(label: 'Berikutnya', color: _amber, icon: Icons.upcoming_rounded),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Nama mapel
-                  Text(schedule.subjectName,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w700,
-                          color: _dark, height: 1.3)),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1, color: _divider),
-                  const SizedBox(height: 10),
-                  // Chip kelas & ruang
-                  Wrap(
-                    spacing: 8, runSpacing: 6,
-                    children: [
-                      _Chip(icon: Icons.groups_2_rounded,
-                          label: 'Kelas ${schedule.className}'),
-                      _Chip(icon: Icons.meeting_room_rounded,
-                          label: schedule.room),
-                    ],
-                  ),
-                ],
-              ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Waktu + badge
+                Row(
+                  children: [
+                    _TimeChip(
+                      start: schedule.startTime, end: schedule.endTime),
+                    const Spacer(),
+                    if (isOngoing)
+                      _Badge(label: 'Berlangsung', color: _blue, icon: Icons.podcasts_rounded)
+                    else if (isNext)
+                      _Badge(label: 'Berikutnya', color: _amber, icon: Icons.upcoming_rounded),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Nama mapel
+                Text(schedule.subjectName,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700,
+                        color: _dark, height: 1.3)),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: _divider),
+                const SizedBox(height: 10),
+                // Chip kelas & ruang
+                Wrap(
+                  spacing: 8, runSpacing: 6,
+                  children: [
+                    _Chip(icon: Icons.groups_2_rounded,
+                        label: 'Kelas ${schedule.className}'),
+                    _Chip(icon: Icons.meeting_room_rounded,
+                        label: schedule.room),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+
+        // ── Timeline: Halo dot ──
+        Positioned(
+          top: dotY - 9,
+          left: lineLeft + (lineWidth / 2) - 9,
+          child: Container(
+            width: 18, height: 18,
+            decoration: BoxDecoration(
+              color: (accent ?? _blue).withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+        
+        // ── Timeline: Dot utama ──
+        Positioned(
+          top: dotY - 5,
+          left: lineLeft + (lineWidth / 2) - 5,
+          child: Container(
+            width: 10, height: 10,
+            decoration: BoxDecoration(
+              color: accent ?? _blue,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+          ),
+        ),
+      ],
     );
   }
-}
-
-// CustomPainter untuk garis + titik timeline.
-// Keunggulan: tahu tinggi actual widget-nya sendiri sehingga bisa menggambar
-// garis penuh dari atas ke bawah TANPA IntrinsicHeight.
-class _DotLinePainter extends CustomPainter {
-  const _DotLinePainter({
-    required this.isFirst, required this.isLast,
-    required this.dotColor, required this.lineColor,
-  });
-  final bool isFirst, isLast;
-  final Color dotColor, lineColor;
-
-  static const double _cx     = 13.0;
-  static const double _dotY   = 23.0;
-  static const double _dotR   = 5.0;
-  static const double _haloR  = 9.0;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()..color = lineColor..strokeWidth = 2;
-
-    // Garis atas (dari atas ke halo)
-    if (!isFirst) {
-      canvas.drawLine(
-        const Offset(_cx, 0),
-        const Offset(_cx, _dotY - _haloR),
-        linePaint,
-      );
-    }
-    // Garis bawah (dari halo ke bawah)
-    if (!isLast) {
-      canvas.drawLine(
-        const Offset(_cx, _dotY + _haloR),
-        Offset(_cx, size.height),
-        linePaint,
-      );
-    }
-
-    // Halo dot
-    canvas.drawCircle(
-      const Offset(_cx, _dotY),
-      _haloR,
-      Paint()..color = dotColor.withValues(alpha: 0.15),
-    );
-
-    // Dot
-    canvas.drawCircle(
-      const Offset(_cx, _dotY),
-      _dotR,
-      Paint()..color = dotColor,
-    );
-
-    // Inti putih
-    canvas.drawCircle(
-      const Offset(_cx, _dotY),
-      _dotR - 2,
-      Paint()..color = Colors.white,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _DotLinePainter old) =>
-      isFirst != old.isFirst || isLast != old.isLast ||
-      dotColor != old.dotColor || lineColor != old.lineColor;
 }
 
 // ─── Time chip ──────────────────────────────────────────────────────────
