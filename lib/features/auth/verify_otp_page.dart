@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'reset_password_page.dart';
+import 'widgets/auth_page_components.dart';
 
 class VerifyOtpPage extends StatefulWidget {
   final String email;
@@ -114,92 +114,51 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF3E87D8);
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        foregroundColor: primaryBlue,
-        elevation: 0,
-        title: const Text('Verifikasi OTP'),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Masukkan 6 digit kode OTP yang dikirim ke ${widget.email}.',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: Colors.black54,
-                  ),
+      body: AuthPageBody(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AuthHeader(
+                title: 'Verifikasi Kode',
+                subtitle:
+                    'Masukkan 6 digit kode yang kami kirim ke\n${widget.email}',
+              ),
+              const SizedBox(height: 38),
+              AuthOtpInput(
+                controller: _otpController,
+                enabled: !_isLoading,
+                onCompleted: (_) => _verifyOtp(),
+              ),
+              const SizedBox(height: 26),
+              const Text(
+                'Belum menerima kode?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AuthUi.muted),
+              ),
+              TextButton(
+                onPressed: (_cooldown > 0 || _isResending || _isLoading)
+                    ? null
+                    : _resendOtp,
+                child: Text(
+                  _cooldown > 0
+                      ? 'Kirim ulang dalam $_cooldown detik'
+                      : _isResending
+                      ? 'Sedang mengirim...'
+                      : 'Kirim ulang kode',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _otpController,
-                  enabled: !_isLoading,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  maxLength: 6,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Kode OTP',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.pin_outlined),
-                    counterText: '',
-                  ),
-                  validator: (value) {
-                    final otp = value?.trim() ?? '';
-                    if (otp.isEmpty) return 'Kode OTP wajib diisi.';
-                    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
-                      return 'Kode OTP harus 6 digit angka.';
-                    }
-                    return null;
-                  },
-                  onFieldSubmitted: (_) => _isLoading ? null : _verifyOtp(),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _verifyOtp,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text('Verifikasi'),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: (_cooldown > 0 || _isResending || _isLoading)
-                      ? null
-                      : _resendOtp,
-                  child: Text(
-                    _cooldown > 0
-                        ? 'Kirim ulang kode ($_cooldown)'
-                        : _isResending
-                        ? 'Mengirim ulang...'
-                        : 'Kirim ulang kode',
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 22),
+              AuthPrimaryButton(
+                label: 'Verifikasi',
+                onPressed: _verifyOtp,
+                isLoading: _isLoading,
+              ),
+            ],
           ),
         ),
       ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../core/network/api_exception.dart';
 import 'data/alumni_register_service.dart';
 import 'data/auth_service.dart';
 import 'pending_verification_page.dart';
-import '../../../core/network/api_exception.dart';
+import 'widgets/auth_page_components.dart';
 
 class AlumniRegisterPage extends StatefulWidget {
   const AlumniRegisterPage({super.key});
@@ -15,6 +17,7 @@ class AlumniRegisterPage extends StatefulWidget {
 class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _service = AlumniRegisterService();
+  final _scrollController = ScrollController();
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -31,7 +34,9 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
   int _selectedYear = DateTime.now().year;
   bool _isLoading = false;
   bool _isLoadingSchools = true;
+  String? _schoolErrorMessage;
   bool _obscurePassword = true;
+  int _currentStep = 0;
 
   @override
   void initState() {
@@ -41,6 +46,7 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -50,21 +56,29 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
   }
 
   Future<void> _loadSchools() async {
+    setState(() {
+      _isLoadingSchools = true;
+      _schoolErrorMessage = null;
+    });
     try {
       final schools = await _service.fetchSchools();
+      if (!mounted) return;
       setState(() {
         _schools = schools;
         _isLoadingSchools = false;
       });
-    } catch (e) {
-      setState(() => _isLoadingSchools = false);
-      if (mounted) _showMessage('Gagal memuat daftar sekolah: $e');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingSchools = false;
+        _schoolErrorMessage =
+            'Daftar sekolah belum dapat dimuat. Periksa koneksi dan alamat server.';
+      });
     }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-
     if (_selectedSchoolId == null) {
       _showMessage('Silakan pilih sekolah terlebih dahulu.');
       return;
@@ -86,14 +100,13 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
       );
 
       if (!mounted) return;
-      
+
       try {
         final authService = AuthService();
         await authService.login(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-        
         if (!mounted) return;
         Navigator.pushAndRemoveUntil(
           context,
@@ -102,420 +115,523 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
         );
       } catch (_) {
         if (!mounted) return;
-        showDialog(
+        await showDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: const Text('Registrasi Berhasil', style: TextStyle(color: Colors.green)),
-            content: const Text('Akun alumni Anda berhasil didaftarkan. Harap tunggu verifikasi dari Admin sekolah sebelum menggunakan aplikasi.'),
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Registrasi Berhasil'),
+            content: const Text(
+              'Akun alumni berhasil didaftarkan. Silakan tunggu verifikasi dari admin sekolah.',
+            ),
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(); 
-                  Navigator.of(context).pop(); 
+                  Navigator.pop(dialogContext);
+                  Navigator.maybePop(context);
                 },
                 child: const Text('Tutup'),
-              )
+              ),
             ],
           ),
         );
       }
-
-    } on ApiException catch (e) {
-      _showMessage(e.message);
-    } catch (e) {
-      _showMessage('Terjadi kesalahan: $e');
+    } on ApiException catch (error) {
+      _showMessage(error.message);
+    } catch (error) {
+      _showMessage('Terjadi kesalahan: $error');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  void _nextStep() {
+    if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _currentStep = 1);
+    _scrollToFormTop();
+  }
+
+  void _previousStep() {
+    FocusScope.of(context).unfocus();
+    setState(() => _currentStep = 0);
+    _scrollToFormTop();
+  }
+
+  void _scrollToFormTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        245,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ));
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // --- UI HELPER WIDGETS ---
-
-  InputDecoration _buildInputDecoration({required String label, required IconData icon, Widget? suffixIcon}) {
+  InputDecoration _inputDecoration({
+    required String label,
+    String? hint,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: Colors.grey.shade600),
-      prefixIcon: Icon(icon, color: const Color(0xFF3E87D8).withOpacity(0.7)),
+      hintText: hint,
       suffixIcon: suffixIcon,
+      labelStyle: const TextStyle(color: AuthUi.muted, fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14),
       filled: true,
-      fillColor: Colors.grey.shade50,
+      fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.shade200, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF3E87D8), width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.red.shade300, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.red.shade400, width: 2),
-      ),
+      border: _fieldBorder(AuthUi.border),
+      enabledBorder: _fieldBorder(AuthUi.border),
+      focusedBorder: _fieldBorder(AuthUi.primary),
+      errorBorder: _fieldBorder(const Color(0xFFD64545)),
+      focusedErrorBorder: _fieldBorder(const Color(0xFFD64545)),
     );
   }
 
-  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3E87D8).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: const Color(0xFF3E87D8), size: 22),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          ...children,
-        ],
-      ),
+  OutlineInputBorder _fieldBorder(Color color) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color),
     );
   }
 
-  // -------------------------
+  void _selectSchool(int? schoolId) {
+    if (schoolId == null) return;
+    setState(() {
+      _selectedSchoolId = schoolId;
+      final school = _schools.firstWhere((school) => school['id'] == schoolId);
+      final classes = (school['classes'] as List?) ?? [];
+      _availableClasses = classes
+          .map((item) => (item as Map?)?['name']?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList();
+      _availableMajors = classes
+          .map((item) => (item as Map?)?['major']?.toString() ?? '')
+          .where((value) => value.isNotEmpty)
+          .toSet()
+          .toList();
+      _selectedClass = null;
+      _selectedMajor = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    const double headerImageHeight = 310;
+    const double scrollableHeaderHeight = 255;
+    const double registerButtonWidth = 200;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
-        elevation: 0,
-        centerTitle: true,
-      ),
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                
-                // --- BAGIAN HEADER YANG BARU ---
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3E87D8).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF3E87D8).withOpacity(0.2)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.school, color: Color(0xFF3E87D8), size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Portal Alumni',
-                          style: TextStyle(
-                            color: Color(0xFF3E87D8), 
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Pendaftaran Alumni',
-                  style: TextStyle(
-                    fontSize: 32, 
-                    fontWeight: FontWeight.w800, 
-                    color: Color(0xFF1A1A1A),
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.blue.shade100),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade700, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Silakan lengkapi data diri Anda. Akun yang didaftarkan akan melalui proses verifikasi oleh Admin sebelum dapat digunakan.',
-                          style: TextStyle(
-                            fontSize: 14, 
-                            color: Colors.blue.shade900, 
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // --------------------------------
-
-                // Data Diri Section
-                _buildSectionCard(
-                  title: 'Data Diri & Akun',
-                  icon: Icons.person_outline,
-                  children: [
-                    TextFormField(
-                      controller: _nameController,
-                      textInputAction: TextInputAction.next,
-                      decoration: _buildInputDecoration(label: 'Nama Lengkap', icon: Icons.badge_outlined),
-                      validator: (v) => v == null || v.isEmpty ? 'Nama tidak boleh kosong' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      decoration: _buildInputDecoration(label: 'Email', icon: Icons.email_outlined),
-                      validator: (v) => v == null || !v.contains('@') ? 'Email tidak valid' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(15),
-                      ],
-                      decoration: _buildInputDecoration(label: 'Nomor HP (WhatsApp)', icon: Icons.phone_android_outlined),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Nomor HP tidak boleh kosong';
-                        if (v.length < 9) return 'Nomor HP terlalu pendek (minimal 9 angka)';
-                        if (!v.startsWith('0') && !v.startsWith('62')) {
-                          return 'Nomor HP harus diawali dengan 0 atau 62';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      textInputAction: TextInputAction.done,
-                      decoration: _buildInputDecoration(
-                        label: 'Password',
-                        icon: Icons.lock_outline,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                            color: Colors.grey.shade600,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                      ),
-                      validator: (v) => v != null && v.length < 6 ? 'Password minimal 6 karakter' : null,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Data Akademik Section
-                _buildSectionCard(
-                  title: 'Data Kelulusan',
-                  icon: Icons.school_outlined,
-                  children: [
-                    if (_isLoadingSchools)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 20),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else
-                      DropdownButtonFormField<int>(
-                        isExpanded: true,
-                        initialValue: _selectedSchoolId,
-                        icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
-                        decoration: _buildInputDecoration(label: 'Pilih Sekolah', icon: Icons.account_balance_outlined),
-                        items: _schools.map((school) => DropdownMenuItem<int>(
-                          value: school['id'] as int,
-                          child: Text(
-                            school['name'].toString(),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )).toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedSchoolId = val;
-                            final school = _schools.firstWhere((s) => s['id'] == val);
-                            final classes = (school['classes'] as List?) ?? [];
-                            
-                            _availableClasses = classes
-                                .map((c) => c['name']?.toString() ?? '')
-                                .where((s) => s.isNotEmpty)
-                                .toSet()
-                                .toList();
-                                
-                            _availableMajors = classes
-                                .map((c) => c['major']?.toString() ?? '')
-                                .where((s) => s.isNotEmpty)
-                                .toSet()
-                                .toList();
-                                
-                            _selectedClass = null;
-                            _selectedMajor = null;
-                          });
-                        },
-                        validator: (v) => v == null ? 'Pilih sekolah' : null,
-                      ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nisnController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      decoration: _buildInputDecoration(label: 'NISN', icon: Icons.pin_outlined),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'NISN tidak boleh kosong';
-                        if (v.length != 10) return 'NISN harus tepat 10 digit';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _selectedYear,
-                      icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
-                      decoration: _buildInputDecoration(label: 'Tahun Lulus', icon: Icons.calendar_today_outlined),
-                      items: List.generate(40, (index) => DateTime.now().year - index)
-                          .map((year) => DropdownMenuItem(
-                                value: year,
-                                child: Text(year.toString(), overflow: TextOverflow.ellipsis),
-                              ))
-                          .toList(),
-                      onChanged: (val) => setState(() => _selectedYear = val!),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            value: _selectedClass,
-                            icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
-                            decoration: _buildInputDecoration(label: 'Kelas', icon: Icons.meeting_room_outlined),
-                            items: _availableClasses.map((c) => DropdownMenuItem(
-                                  value: c,
-                                  child: Text(c, overflow: TextOverflow.ellipsis),
-                                )).toList(),
-                            onChanged: (val) => setState(() => _selectedClass = val),
-                            validator: (v) => v == null ? 'Pilih kelas' : null,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            isExpanded: true,
-                            value: _selectedMajor,
-                            icon: const Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.grey),
-                            decoration: _buildInputDecoration(label: 'Jurusan', icon: Icons.book_outlined),
-                            items: _availableMajors.map((m) => DropdownMenuItem(
-                                  value: m,
-                                  child: Text(m, overflow: TextOverflow.ellipsis),
-                                )).toList(),
-                            onChanged: (val) => setState(() => _selectedMajor = val),
-                            validator: (v) => v == null ? 'Pilih jurusan' : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 36),
-
-                // Submit Button
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF3E87D8).withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      backgroundColor: const Color(0xFF3E87D8),
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.shade400,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24, 
-                            height: 24, 
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
-                          )
-                        : const Text('Daftar Sekarang', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                  ),
-                ),
-                const SizedBox(height: 32),
-              ],
+        top: false,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: headerImageHeight,
+              child: Image.asset(
+                'assets/images/home/splash/splashwelcome.png',
+                fit: BoxFit.cover,
+                alignment: const Alignment(0, -0.2),
+              ),
             ),
+            SingleChildScrollView(
+              controller: _scrollController,
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.zero,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: scrollableHeaderHeight,
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.paddingOf(context).top + 10,
+                            left: 12,
+                          ),
+                          child: TextButton.icon(
+                            onPressed: _isLoading
+                                ? null
+                                : () => Navigator.maybePop(context),
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 19,
+                            ),
+                            label: const Text('Kembali'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              backgroundColor: Colors.black.withValues(
+                                alpha: 0.2,
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 38, 24, 0),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(34),
+                          topRight: Radius.circular(34),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Text(
+                            'Daftar Alumni',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 23,
+                              fontWeight: FontWeight.w700,
+                              color: AuthUi.text,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Lengkapi data berikut untuk mengajukan akun alumni.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: AuthUi.muted),
+                          ),
+                          const SizedBox(height: 30),
+                          if (_currentStep == 0) ...[
+                            const _SectionTitle(title: 'Data Akun'),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _nameController,
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(
+                                label: 'Nama Lengkap',
+                              ),
+                              validator: (value) =>
+                                  value == null || value.trim().isEmpty
+                                  ? 'Nama tidak boleh kosong.'
+                                  : null,
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(label: 'Email'),
+                              validator: (value) =>
+                                  value == null || !value.contains('@')
+                                  ? 'Email tidak valid.'
+                                  : null,
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              textInputAction: TextInputAction.next,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(15),
+                              ],
+                              decoration: _inputDecoration(
+                                label: 'Nomor HP/WhatsApp',
+                              ),
+                              validator: (value) {
+                                final phone = value ?? '';
+                                if (phone.isEmpty) {
+                                  return 'Nomor HP tidak boleh kosong.';
+                                }
+                                if (phone.length < 9) {
+                                  return 'Nomor HP minimal 9 angka.';
+                                }
+                                if (!phone.startsWith('0') &&
+                                    !phone.startsWith('62')) {
+                                  return 'Nomor HP harus diawali 0 atau 62.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.next,
+                              decoration: _inputDecoration(
+                                label: 'Password',
+                                suffixIcon: IconButton(
+                                  onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  ),
+                                  icon: Icon(
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: AuthUi.muted,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) =>
+                                  value != null && value.length >= 6
+                                  ? null
+                                  : 'Password minimal 6 karakter.',
+                            ),
+                          ] else ...[
+                            const _SectionTitle(title: 'Data Kelulusan'),
+                            const SizedBox(height: 16),
+                            if (_isLoadingSchools)
+                              const SizedBox(
+                                height: 54,
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            else if (_schoolErrorMessage != null)
+                              _SchoolLoadError(
+                                message: _schoolErrorMessage!,
+                                onRetry: _loadSchools,
+                              )
+                            else
+                              DropdownButtonFormField<int>(
+                                isExpanded: true,
+                                initialValue: _selectedSchoolId,
+                                decoration: _inputDecoration(label: 'Sekolah'),
+                                items: _schools
+                                    .map(
+                                      (school) => DropdownMenuItem<int>(
+                                        value: school['id'] as int,
+                                        child: Text(
+                                          school['name'].toString(),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: _selectSchool,
+                                validator: (value) =>
+                                    value == null ? 'Pilih sekolah.' : null,
+                              ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _nisnController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(10),
+                              ],
+                              decoration: _inputDecoration(label: 'NISN'),
+                              validator: (value) {
+                                final nisn = value ?? '';
+                                if (nisn.isEmpty) {
+                                  return 'NISN tidak boleh kosong.';
+                                }
+                                if (nisn.length != 10) {
+                                  return 'NISN harus 10 digit.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            DropdownButtonFormField<int>(
+                              isExpanded: true,
+                              initialValue: _selectedYear,
+                              decoration: _inputDecoration(
+                                label: 'Tahun Lulus',
+                              ),
+                              items:
+                                  List.generate(
+                                        40,
+                                        (index) => DateTime.now().year - index,
+                                      )
+                                      .map(
+                                        (year) => DropdownMenuItem<int>(
+                                          value: year,
+                                          child: Text(year.toString()),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (value) {
+                                if (value != null) {
+                                  setState(() => _selectedYear = value);
+                                }
+                              },
+                            ),
+                            const SizedBox(height: 14),
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _selectedClass,
+                              decoration: _inputDecoration(label: 'Kelas'),
+                              items: _availableClasses
+                                  .map(
+                                    (value) => DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _selectedClass = value),
+                              validator: (value) =>
+                                  value == null ? 'Pilih kelas.' : null,
+                            ),
+                            const SizedBox(height: 14),
+                            DropdownButtonFormField<String>(
+                              isExpanded: true,
+                              initialValue: _selectedMajor,
+                              decoration: _inputDecoration(label: 'Jurusan'),
+                              items: _availableMajors
+                                  .map(
+                                    (value) => DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Text(
+                                        value,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) =>
+                                  setState(() => _selectedMajor = value),
+                              validator: (value) =>
+                                  value == null ? 'Pilih jurusan.' : null,
+                            ),
+                          ],
+                          const SizedBox(height: 28),
+                          if (_currentStep == 0)
+                            Center(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(26),
+                                child: SizedBox(
+                                  width: registerButtonWidth,
+                                  child: AuthPrimaryButton(
+                                    label: 'Lanjutkan',
+                                    onPressed: _nextStep,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 52,
+                                    child: OutlinedButton(
+                                      onPressed: _isLoading
+                                          ? null
+                                          : _previousStep,
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AuthUi.primary,
+                                        side: const BorderSide(
+                                          color: AuthUi.primary,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            26,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text('Kembali'),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  flex: 2,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(26),
+                                    child: AuthPrimaryButton(
+                                      label: 'Daftar Alumni',
+                                      onPressed: _submit,
+                                      isLoading: _isLoading,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          const SizedBox(height: 36),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AuthUi.text,
           ),
         ),
+        const SizedBox(width: 12),
+        const Expanded(child: Divider(color: AuthUi.border)),
+      ],
+    );
+  }
+}
+
+class _SchoolLoadError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _SchoolLoadError({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F7),
+        border: Border.all(color: AuthUi.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: AuthUi.muted),
+          ),
+          const SizedBox(height: 8),
+          TextButton(onPressed: onRetry, child: const Text('Coba Lagi')),
+        ],
       ),
     );
   }
