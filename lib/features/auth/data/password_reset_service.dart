@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/api_config.dart';
+import '../../../core/errors/error_mapper.dart';
 import 'auth_service.dart';
 
 class PasswordResetService {
@@ -81,7 +82,10 @@ class PasswordResetService {
     final success = body['success'] == true;
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthException(_readErrorMessage(body));
+      throw AuthException(
+        _readErrorMessage(body),
+        statusCode: response.statusCode,
+      );
     }
 
     return body;
@@ -91,7 +95,8 @@ class PasswordResetService {
     try {
       final decoded = jsonDecode(responseBody);
       if (decoded is Map<String, dynamic>) return decoded;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       throw const AuthException('Response server tidak bisa dibaca.');
     }
 

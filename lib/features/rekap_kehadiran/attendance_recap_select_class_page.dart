@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import '../kelas/data/class_recap_models.dart';
 import '../kelas/data/class_recap_service.dart';
@@ -44,16 +45,24 @@ class _AttendanceRecapSelectClassPageState
         _classes = classes;
         _isLoading = false;
       });
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.message;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data kelas.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat data kelas.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data kelas.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }

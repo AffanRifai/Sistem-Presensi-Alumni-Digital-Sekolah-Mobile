@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/alumni_register_service.dart';
 import 'data/auth_service.dart';
@@ -67,12 +68,15 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
         _schools = schools;
         _isLoadingSchools = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
         _isLoadingSchools = false;
-        _schoolErrorMessage =
-            'Daftar sekolah belum dapat dimuat. Periksa koneksi dan alamat server.';
+        _schoolErrorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Daftar sekolah belum dapat dimuat. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        );
       });
     }
   }
@@ -113,7 +117,8 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
           MaterialPageRoute(builder: (_) => const PendingVerificationPage()),
           (route) => false,
         );
-      } catch (_) {
+      } catch (error, stackTrace) {
+        ErrorMapper.getMessage(error, stackTrace: stackTrace);
         if (!mounted) return;
         await showDialog<void>(
           context: context,
@@ -135,10 +140,22 @@ class _AlumniRegisterPageState extends State<AlumniRegisterPage> {
           ),
         );
       }
-    } on ApiException catch (error) {
-      _showMessage(error.message);
-    } catch (error) {
-      _showMessage('Terjadi kesalahan: $error');
+    } on ApiException catch (error, stackTrace) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Registrasi belum berhasil. Silakan periksa kembali data Anda.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Registrasi belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

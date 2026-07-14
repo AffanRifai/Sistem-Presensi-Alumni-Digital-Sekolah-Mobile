@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'data/alumni_event_service.dart';
-// Asumsi model AlumniEvent berada di file terpisah atau di dalam service
-// Pastikan import ini sesuai dengan struktur folder kamu
-import 'data/alumni_event_service.dart' show AlumniEvent; 
 import '../../core/config/api_config.dart';
+import '../../core/errors/error_mapper.dart';
 
 class AlumniEventFormPage extends StatefulWidget {
   final AlumniEvent? eventToEdit;
@@ -55,12 +53,27 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null && mounted) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            ErrorMapper.getMessage(
+              error,
+              fallback: 'Gambar belum dapat dipilih. Silakan coba lagi.',
+              stackTrace: stackTrace,
+            ),
+          ),
+        ),
+      );
     }
   }
 
@@ -142,10 +155,18 @@ class _AlumniEventFormPageState extends State<AlumniEventFormPage> {
         );
         Navigator.of(context).pop(true);
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+          SnackBar(
+            content: Text(
+              ErrorMapper.getMessage(
+                error,
+                fallback: 'Event belum dapat disimpan. Silakan coba lagi.',
+                stackTrace: stackTrace,
+              ),
+            ),
+          ),
         );
       }
     } finally {

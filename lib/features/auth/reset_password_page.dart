@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'login_page.dart';
@@ -60,12 +61,24 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         ),
         (route) => false,
       );
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Password belum dapat diperbarui. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Password belum dapat diperbarui. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

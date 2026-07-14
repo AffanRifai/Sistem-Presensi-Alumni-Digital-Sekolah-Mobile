@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '/features/home/home_page.dart';
 import '../../core/audio/welcome_audio_service.dart';
 import '../../core/config/api_config.dart';
+import '../../core/errors/error_mapper.dart';
 import 'alumni_register_page.dart';
 import 'forgot_password_page.dart';
 import 'pending_verification_page.dart';
@@ -72,12 +73,24 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
 
       await _handleAuthResult(result);
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login gagal. Periksa email dan password.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server Laravel.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -99,8 +112,9 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         setState(() {});
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
       _isGoogleInitialized = false;
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
     }
   }
 
@@ -124,19 +138,36 @@ class _LoginPageState extends State<LoginPage> {
 
       final account = await GoogleSignIn.instance.authenticate();
       await _loginToLaravelWithGoogle(account);
-    } on GoogleSignInException catch (error) {
+    } on GoogleSignInException catch (error, stackTrace) {
       if (!mounted) return;
       if (error.code == GoogleSignInExceptionCode.canceled) {
         return;
       }
-      _showMessage(error.description ?? 'Login Google gagal.');
-    } on AuthException catch (error) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (error) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      debugPrint('Google login error: $error');
-      _showMessage(_formatGoogleError(error));
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -154,13 +185,24 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await _loginToLaravelWithGoogle(event.user);
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (error) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      debugPrint('Google login event error: $error');
-      _showMessage(_formatGoogleError(error));
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -170,9 +212,13 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleGoogleAuthError(Object error) {
     if (!mounted) return;
-    debugPrint('Google auth stream error: $error');
     _resetGoogleSessionAfterReauthFailure(error);
-    _showMessage(_formatGoogleError(error));
+    _showMessage(
+      ErrorMapper.getMessage(
+        error,
+        fallback: 'Login Google belum berhasil. Silakan coba lagi.',
+      ),
+    );
   }
 
   Future<void> _resetGoogleSessionAfterReauthFailure(Object error) async {
@@ -181,31 +227,10 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       await GoogleSignIn.instance.signOut();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       // Ignore. The next tap on the Google button will create a fresh session.
     }
-  }
-
-  String _formatGoogleError(Object error) {
-    final rawMessage = error.toString().toLowerCase();
-    if (rawMessage.contains('account reauth failed')) {
-      return 'Sesi Google gagal divalidasi. Coba klik Login Google lagi, atau pastikan origin Flutter sudah ditambahkan di Google Cloud OAuth.';
-    }
-
-    if (error is GoogleSignInException) {
-      final description = error.description;
-      if (description != null && description.trim().isNotEmpty) {
-        return description;
-      }
-      return 'Login Google gagal: ${error.code.name}.';
-    }
-
-    final message = error.toString();
-    if (message.trim().isNotEmpty && message != 'Exception') {
-      return message;
-    }
-
-    return 'Login Google gagal. Periksa konfigurasi Google OAuth.';
   }
 
   Future<void> _loginToLaravelWithGoogle(GoogleSignInAccount account) async {

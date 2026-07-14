@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
 import '../alumni/alumni_profile_page.dart';
@@ -75,7 +76,8 @@ class _HomePageState extends State<HomePage> {
 
     try {
       refreshedUser = await _authService.refreshCurrentUser();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       refreshedUser = await _authService.readUser();
     }
 
@@ -764,10 +766,14 @@ class _EducationInformationSectionState
         _articles = articles;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Informasi pendidikan sedang tidak tersedia.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Informasi pendidikan sedang tidak tersedia.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }
@@ -979,10 +985,14 @@ class _ParentTodayAttendanceSectionState
         _children = summary.children;
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat informasi kehadiran anak.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat informasi kehadiran anak.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }

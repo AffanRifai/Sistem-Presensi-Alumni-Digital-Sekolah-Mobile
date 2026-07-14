@@ -5,6 +5,7 @@ import 'alumni_event_form_page.dart';
 import 'data/alumni_event_service.dart';
 import '../auth/data/auth_service.dart';
 import '../../core/config/api_config.dart';
+import '../../core/errors/error_mapper.dart';
 
 class AlumniEventPage extends StatefulWidget {
   const AlumniEventPage({super.key});
@@ -32,8 +33,8 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
       if (mounted) {
         setState(() => _currentUserId = user?.id);
       }
-    } catch (e) {
-      debugPrint('Gagal memuat user: $e');
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
     }
   }
 
@@ -149,12 +150,18 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
             if (formResult == true) {
               _loadEvents(page: 1);
             }
-          } catch (e) {
+          } catch (error, stackTrace) {
             // Tangani jika _eventsFuture gagal dimuat
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Gagal memverifikasi jumlah event.'),
+              SnackBar(
+                content: Text(
+                  ErrorMapper.getMessage(
+                    error,
+                    fallback: 'Gagal memverifikasi jumlah event.',
+                    stackTrace: stackTrace,
+                  ),
+                ),
               ),
             );
           }
@@ -171,7 +178,11 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
 
           if (snapshot.hasError) {
             return _ErrorView(
-              message: snapshot.error.toString(),
+              message: ErrorMapper.getMessage(
+                snapshot.error,
+                fallback: 'Tidak bisa memuat event alumni.',
+                stackTrace: snapshot.stackTrace,
+              ),
               onRetry: _loadEvents,
             );
           }
@@ -492,11 +503,21 @@ class _EventCard extends StatelessWidget {
           );
           onRefresh();
         }
-      } catch (e) {
+      } catch (error, stackTrace) {
         if (context.mounted) {
           ScaffoldMessenger.of(
             context,
-          ).showSnackBar(SnackBar(content: Text('Gagal menghapus event: $e')));
+          ).showSnackBar(
+            SnackBar(
+              content: Text(
+                ErrorMapper.getMessage(
+                  error,
+                  fallback: 'Event belum dapat dihapus. Silakan coba lagi.',
+                  stackTrace: stackTrace,
+                ),
+              ),
+            ),
+          );
         }
       }
     }

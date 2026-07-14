@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/errors/error_mapper.dart';
 import '../../../core/network/api_exception.dart';
 import 'app_notification_models.dart';
 import 'notification_service.dart';
@@ -28,10 +29,18 @@ class NotificationController extends ChangeNotifier {
       notifications = result.notifications;
       unreadCount = result.unreadCount;
       errorMessage = null;
-    } on ApiException catch (error) {
-      errorMessage = error.message;
-    } catch (_) {
-      errorMessage = 'Tidak bisa memuat notifikasi.';
+    } on ApiException catch (error, stackTrace) {
+      errorMessage = ErrorMapper.getMessage(
+        error,
+        fallback: 'Tidak bisa memuat notifikasi.',
+        stackTrace: stackTrace,
+      );
+    } catch (error, stackTrace) {
+      errorMessage = ErrorMapper.getMessage(
+        error,
+        fallback: 'Tidak bisa memuat notifikasi.',
+        stackTrace: stackTrace,
+      );
     } finally {
       isLoading = false;
       notifyListeners();
@@ -42,7 +51,9 @@ class NotificationController extends ChangeNotifier {
     try {
       unreadCount = await _service.fetchUnreadCount();
       notifyListeners();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
+    }
   }
 
   Future<void> markAllAsRead() async {
@@ -63,7 +74,9 @@ class NotificationController extends ChangeNotifier {
           )
           .toList();
       notifyListeners();
-    } catch (_) {}
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
+    }
   }
 
   void handleIncomingPush() {

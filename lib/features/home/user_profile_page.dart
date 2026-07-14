@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../auth/data/auth_service.dart';
 import '../auth/welcome_page.dart';
 
@@ -499,7 +500,8 @@ class UserProfilePage extends StatelessWidget {
   Future<AuthUser?> _loadUser() async {
     try {
       return await authService.refreshCurrentUser();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       return userFuture;
     }
   }

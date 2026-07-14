@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import '../kelas/data/class_recap_models.dart';
 import 'data/attendance_recap_models.dart';
@@ -88,16 +89,24 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
           _isLoading = false;
         });
       }
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.message;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat rekap kehadiran.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat rekap kehadiran.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat rekap kehadiran.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }

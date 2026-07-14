@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../../features/auth/data/auth_service.dart';
 import '../config/api_config.dart';
+import '../errors/error_mapper.dart';
 import 'api_exception.dart';
 
 class ApiClient {
@@ -62,36 +63,35 @@ class ApiClient {
   }) async {
     final uri = _buildUri(path);
     final request = http.MultipartRequest('POST', uri);
-    
+
     // Add headers
     final currentHeaders = await _headers();
     // MultipartRequest automatically sets the content-type boundary
-    currentHeaders.remove('Content-Type'); 
+    currentHeaders.remove('Content-Type');
     request.headers.addAll(currentHeaders);
 
     if (fields != null) {
       request.fields.addAll(fields);
     }
-    
+
     if (file != null) {
       request.files.add(file);
     }
 
-    final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 30));
+    final streamedResponse = await _client
+        .send(request)
+        .timeout(const Duration(seconds: 30));
     final response = await http.Response.fromStream(streamedResponse);
 
     return _handleResponse(response);
   }
 
-Future<Map<String, dynamic>> delete(
+  Future<Map<String, dynamic>> delete(
     String path, {
     Map<String, String>? queryParameters,
   }) async {
     final response = await _client
-        .delete(
-          _buildUri(path, queryParameters), 
-          headers: await _headers(),
-        )
+        .delete(_buildUri(path, queryParameters), headers: await _headers())
         .timeout(const Duration(seconds: 15));
 
     return _handleResponse(response);
@@ -118,10 +118,14 @@ Future<Map<String, dynamic>> delete(
 
   Map<String, dynamic> _handleResponse(http.Response response) {
     final decoded = _decode(response.body);
-    final success = decoded['success'] == true || decoded['status'] == 'success';
+    final success =
+        decoded['success'] == true || decoded['status'] == 'success';
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(_readErrorMessage(decoded));
+      throw ApiException(
+        _readErrorMessage(decoded),
+        statusCode: response.statusCode,
+      );
     }
 
     return decoded;
@@ -133,7 +137,8 @@ Future<Map<String, dynamic>> delete(
       if (decoded is Map<String, dynamic>) {
         return decoded;
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       throw const ApiException('Response server tidak bisa dibaca.');
     }
 

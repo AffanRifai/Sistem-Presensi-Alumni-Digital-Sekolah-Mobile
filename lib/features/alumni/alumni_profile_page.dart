@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'data/alumni_service.dart';
 import 'alumni_profile_edit_page.dart';
+import '../../core/errors/error_mapper.dart';
 
 import '../auth/data/auth_service.dart'; 
 import '../auth/login_page.dart'; 
@@ -64,9 +65,19 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
             (route) => false,
           );
         }
-      } catch (e) {
+      } catch (error, stackTrace) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal logout: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                ErrorMapper.getMessage(
+                  error,
+                  fallback: 'Belum dapat keluar dari akun. Silakan coba lagi.',
+                  stackTrace: stackTrace,
+                ),
+              ),
+            ),
+          );
         }
       }
     }
@@ -115,7 +126,11 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
 
           if (snapshot.hasError) {
             return _ErrorView(
-              message: snapshot.error.toString(),
+              message: ErrorMapper.getMessage(
+                snapshot.error,
+                fallback: 'Tidak bisa memuat profil alumni.',
+                stackTrace: snapshot.stackTrace,
+              ),
               onRetry: () => setState(() {
                 _profileFuture = _service.fetchProfile();
               }),

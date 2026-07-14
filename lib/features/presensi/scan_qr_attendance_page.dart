@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/qr_attendance_service.dart';
 
@@ -51,7 +52,8 @@ class _ScanQrAttendancePageState extends State<ScanQrAttendancePage> {
         return;
       }
       payload = decoded;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       _showMessage('Format QR tidak valid.');
       return;
     }
@@ -80,18 +82,26 @@ class _ScanQrAttendancePageState extends State<ScanQrAttendancePage> {
             'Kehadiran tercatat ${result.statusLabel}${result.checkInTime == null ? '' : ' jam ${result.checkInTime}'}.',
         success: true,
       );
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       await _showResultDialog(
         title: 'Presensi Gagal',
-        message: error.message,
+        message: ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa mengirim hasil scan.',
+          stackTrace: stackTrace,
+        ),
         success: false,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       await _showResultDialog(
         title: 'Presensi Gagal',
-        message: 'Tidak bisa mengirim hasil scan.',
+        message: ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa mengirim hasil scan.',
+          stackTrace: stackTrace,
+        ),
         success: false,
       );
     } finally {
@@ -162,6 +172,41 @@ class _ScanQrAttendancePageState extends State<ScanQrAttendancePage> {
           MobileScanner(
             controller: _scannerController,
             onDetect: _handleDetect,
+            errorBuilder: (context, error) {
+              final message = ErrorMapper.getMessage(
+                error,
+                fallback:
+                    'Kamera tidak dapat digunakan. Periksa izin kamera pada pengaturan aplikasi.',
+              );
+              return ColoredBox(
+                color: Colors.white,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.no_photography_outlined,
+                          size: 48,
+                          color: Colors.black54,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
           Center(
             child: Container(

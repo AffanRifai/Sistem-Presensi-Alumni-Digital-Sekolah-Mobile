@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/features/home/home_page.dart';
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/presensi_models.dart';
 import 'data/presensi_service.dart';
@@ -149,16 +150,24 @@ class _StudentKehadiranPageState extends State<StudentKehadiranPage> {
             );
         _isLoading = false;
       });
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.message;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data siswa.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat data siswa.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data siswa.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }
@@ -227,14 +236,26 @@ class _StudentKehadiranPageState extends State<StudentKehadiranPage> {
             )
             .toList(),
       );
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa menyimpan presensi.',
+          stackTrace: stackTrace,
+        ),
+      );
       setState(() => _isSaving = false);
       return;
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa menyimpan presensi.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa menyimpan presensi.',
+          stackTrace: stackTrace,
+        ),
+      );
       setState(() => _isSaving = false);
       return;
     }

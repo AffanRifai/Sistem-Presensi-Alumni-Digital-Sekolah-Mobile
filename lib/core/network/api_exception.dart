@@ -1,7 +1,12 @@
-class ApiException implements Exception {
-  final String message;
+import '../errors/error_mapper.dart';
 
-  const ApiException(this.message);
+class ApiException implements Exception, AppError {
+  @override
+  final String message;
+  @override
+  final int? statusCode;
+
+  const ApiException(this.message, {this.statusCode});
 
   @override
   String toString() => message;

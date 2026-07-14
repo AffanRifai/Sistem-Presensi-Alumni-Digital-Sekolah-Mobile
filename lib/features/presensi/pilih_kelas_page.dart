@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/presensi_models.dart';
 import 'data/presensi_service.dart';
@@ -54,16 +55,24 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
         _selectedClass = classes.isNotEmpty ? classes.first : null;
         _isLoading = false;
       });
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.message;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data kelas.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat data kelas.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat data kelas.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }
@@ -128,12 +137,24 @@ class _SelectClassDatePageState extends State<SelectClassDatePage> {
           ),
         ),
       );
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa membuka sesi QR.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa membuka sesi QR.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa membuka sesi QR.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isOpeningQr = false);
     }

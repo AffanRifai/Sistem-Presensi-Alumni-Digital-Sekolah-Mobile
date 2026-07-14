@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'data/alumni_service.dart';
-import '../../../core/network/api_exception.dart';
+import '../../core/errors/error_mapper.dart';
+import '../../core/network/api_exception.dart';
 
 class AlumniProfileEditPage extends StatefulWidget {
   final AlumniProfile currentProfile;
@@ -102,13 +103,33 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
         const SnackBar(content: Text('Profil berhasil diperbarui')),
       );
       Navigator.pop(context, true); // true indicates success
-    } on ApiException catch (e) {
+    } on ApiException catch (error, stackTrace) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorMapper.getMessage(
+                error,
+                fallback: 'Profil belum dapat diperbarui.',
+                stackTrace: stackTrace,
+              ),
+            ),
+          ),
+        );
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ErrorMapper.getMessage(
+                error,
+                fallback: 'Profil belum dapat diperbarui. Silakan coba lagi.',
+                stackTrace: stackTrace,
+              ),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) {

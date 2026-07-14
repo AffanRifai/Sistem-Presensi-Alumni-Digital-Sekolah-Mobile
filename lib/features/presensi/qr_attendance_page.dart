@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/qr_attendance_models.dart';
 import 'data/qr_attendance_service.dart';
@@ -65,12 +66,24 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
         _token = token;
         _errorMessage = null;
       });
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
-      setState(() => _errorMessage = error.message);
-    } catch (_) {
+      setState(
+        () => _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat QR presensi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Tidak bisa memuat QR presensi.');
+      setState(
+        () => _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat QR presensi.',
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -88,9 +101,15 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
           _errorMessage = null;
         }
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted || !showError) return;
-      setState(() => _errorMessage = 'Tidak bisa memuat detail sesi.');
+      setState(
+        () => _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat detail sesi.',
+          stackTrace: stackTrace,
+        ),
+      );
     }
   }
 
@@ -129,12 +148,24 @@ class _QrAttendancePageState extends State<QrAttendancePage> {
       if (!mounted) return;
       _showMessage('Sesi presensi berhasil ditutup.');
       Navigator.pop(context);
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa menutup sesi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa menutup sesi.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa menutup sesi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isClosing = false);
     }

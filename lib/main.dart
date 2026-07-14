@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'core/errors/error_mapper.dart';
 import 'core/navigation/app_navigator.dart';
 import 'features/auth/data/auth_service.dart';
 import 'features/auth/pending_verification_page.dart';
@@ -13,7 +14,9 @@ import 'features/home/home_page.dart';
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-  } catch (_) {}
+  } catch (error, stackTrace) {
+    ErrorMapper.getMessage(error, stackTrace: stackTrace);
+  }
 
   if (kDebugMode) {
     print('Menerima notifikasi background: ${message.messageId}');
@@ -27,10 +30,8 @@ void main() async {
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  } catch (e) {
-    if (kDebugMode) {
-      print('[Firebase] Inisialisasi diabaikan atau gagal: $e');
-    }
+  } catch (error, stackTrace) {
+    ErrorMapper.getMessage(error, stackTrace: stackTrace);
   }
 
   runApp(const MyApp());
@@ -78,7 +79,8 @@ class _SessionGateState extends State<SessionGate> {
         AuthUser? user;
         try {
           user = await _authService.refreshCurrentUser();
-        } catch (_) {
+        } catch (error, stackTrace) {
+          ErrorMapper.getMessage(error, stackTrace: stackTrace);
           user = await _authService.readUser();
         }
 
@@ -94,7 +96,8 @@ class _SessionGateState extends State<SessionGate> {
           }
         }
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       nextPage = const WelcomePage();
     }
 

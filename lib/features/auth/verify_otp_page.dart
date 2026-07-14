@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'reset_password_page.dart';
@@ -73,12 +74,24 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
               ResetPasswordPage(email: widget.email, resetToken: resetToken),
         ),
       );
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Kode OTP belum dapat diverifikasi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Kode OTP belum dapat diverifikasi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -95,12 +108,24 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
       _otpController.clear();
       _startCooldown();
       _showMessage('Kode OTP baru sudah dikirim.');
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa mengirim ulang kode OTP.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa mengirim ulang kode OTP.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa mengirim ulang kode OTP.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isResending = false);
     }

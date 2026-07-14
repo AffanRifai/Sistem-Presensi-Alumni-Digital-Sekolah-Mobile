@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/errors/error_mapper.dart';
 import 'data/schedule_model.dart';
 import 'data/schedule_service.dart';
 
@@ -16,7 +17,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 
   // State manual (proven stable)
   Map<String, List<ScheduleItem>>? _data;
-  Object? _error;
+  String? _errorMessage;
   bool _loading = true;
 
   // Warna
@@ -76,7 +77,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
     if (!mounted) return;
     setState(() {
       _loading = true;
-      _error = null;
+      _errorMessage = null;
     });
     try {
       final result = await _service.fetchSchedules();
@@ -85,10 +86,14 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
         _data = result;
         _loading = false;
       });
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _error = e;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Jadwal belum dapat dimuat. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        );
         _loading = false;
       });
     }
@@ -154,7 +159,9 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeInOut,
         );
-      } catch (_) {}
+      } catch (error, stackTrace) {
+        ErrorMapper.getMessage(error, stackTrace: stackTrace);
+      }
     });
   }
 
@@ -299,7 +306,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
     }
 
     // Error
-    if (_error != null) {
+    if (_errorMessage != null) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -330,7 +337,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                _error.toString(),
+                _errorMessage!,
                 style: const TextStyle(color: _muted, fontSize: 12),
                 textAlign: TextAlign.center,
               ),

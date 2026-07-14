@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import 'data/auth_service.dart';
 import 'data/password_reset_service.dart';
 import 'verify_otp_page.dart';
@@ -39,12 +40,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         context,
         MaterialPageRoute(builder: (context) => VerifyOtpPage(email: email)),
       );
-    } on AuthException catch (error) {
+    } on AuthException catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage(error.message);
-    } catch (_) {
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Kode OTP belum dapat dikirim. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      _showMessage('Tidak bisa terhubung ke server.');
+      _showMessage(
+        ErrorMapper.getMessage(
+          error,
+          fallback: 'Kode OTP belum dapat dikirim. Silakan coba lagi.',
+          stackTrace: stackTrace,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

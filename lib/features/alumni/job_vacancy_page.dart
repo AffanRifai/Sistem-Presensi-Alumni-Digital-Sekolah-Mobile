@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'data/job_vacancy_service.dart';
 import '../../core/config/api_config.dart';
+import '../../core/errors/error_mapper.dart';
 
 class JobVacancyPage extends StatefulWidget {
   final bool enablePullRefresh;
@@ -53,6 +54,11 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
             );
           }
           if (snapshot.hasError) {
+            final message = ErrorMapper.getMessage(
+              snapshot.error,
+              fallback: 'Tidak bisa memuat lowongan pekerjaan.',
+              stackTrace: snapshot.stackTrace,
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -71,7 +77,7 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Gagal memuat lowongan\n${snapshot.error}',
+                    message,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey.shade600),
                   ),

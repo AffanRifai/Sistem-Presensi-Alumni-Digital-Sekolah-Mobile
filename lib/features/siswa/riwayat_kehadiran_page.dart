@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/errors/error_mapper.dart';
 import '../../core/network/api_exception.dart';
 import 'data/student_attendance_models.dart';
 import 'data/student_attendance_service.dart';
@@ -46,16 +47,24 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
         _records = summary.records;
         _isLoading = false;
       });
-    } on ApiException catch (error) {
+    } on ApiException catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.message;
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat riwayat kehadiran.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Tidak bisa memuat riwayat kehadiran.';
+        _errorMessage = ErrorMapper.getMessage(
+          error,
+          fallback: 'Tidak bisa memuat riwayat kehadiran.',
+          stackTrace: stackTrace,
+        );
         _isLoading = false;
       });
     }

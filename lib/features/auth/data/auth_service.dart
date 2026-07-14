@@ -5,11 +5,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/api_config.dart';
+import '../../../core/errors/error_mapper.dart';
 
-class AuthException implements Exception {
+class AuthException implements Exception, AppError {
+  @override
   final String message;
+  @override
+  final int? statusCode;
 
-  const AuthException(this.message);
+  const AuthException(this.message, {this.statusCode});
 
   @override
   String toString() => message;
@@ -149,7 +153,10 @@ class AuthService {
     final success = body['success'] == true;
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthException(_readErrorMessage(body));
+      throw AuthException(
+        _readErrorMessage(body),
+        statusCode: response.statusCode,
+      );
     }
 
     final data = body['data'];
@@ -179,7 +186,10 @@ class AuthService {
     final success = body['success'] == true;
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthException(_readErrorMessage(body));
+      throw AuthException(
+        _readErrorMessage(body),
+        statusCode: response.statusCode,
+      );
     }
 
     final data = body['data'];
@@ -228,7 +238,10 @@ class AuthService {
     final success = body['success'] == true;
 
     if (!success || response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthException(_readErrorMessage(body));
+      throw AuthException(
+        _readErrorMessage(body),
+        statusCode: response.statusCode,
+      );
     }
 
     final data = body['data'];
@@ -251,7 +264,8 @@ class AuthService {
       if (decoded is Map<String, dynamic>) {
         return AuthUser.fromJson(decoded);
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       return null;
     }
 
@@ -279,7 +293,8 @@ class AuthService {
               body: jsonEncode(body),
             )
             .timeout(const Duration(seconds: 5));
-      } catch (e) {
+      } catch (error, stackTrace) {
+        ErrorMapper.getMessage(error, stackTrace: stackTrace);
         // Silently ignore network errors during logout to ensure local storage gets cleared
       }
     }
@@ -299,7 +314,8 @@ class AuthService {
       if (decoded is Map<String, dynamic>) {
         return decoded;
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
       throw const AuthException('Response server tidak bisa dibaca.');
     }
 
