@@ -15,7 +15,8 @@ class JobVacancyPage extends StatefulWidget {
 
 class _JobVacancyPageState extends State<JobVacancyPage> {
   final _service = JobVacancyService();
-  late Future<List<JobVacancy>> _jobsFuture;
+  late Future<JobVacancyPageResult> _jobsFuture;
+  int _currentPage = 1;
 
   @override
   void initState() {
@@ -23,10 +24,17 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
     _loadJobs();
   }
 
-  void _loadJobs() {
+  void _loadJobs({int? page}) {
+    final requestedPage = page ?? _currentPage;
     setState(() {
-      _jobsFuture = _service.fetchVacancies();
+      _currentPage = requestedPage;
+      _jobsFuture = _service.fetchVacancies(page: requestedPage, perPage: 10);
     });
+  }
+
+  Future<void> _refreshJobs() async {
+    _loadJobs(page: _currentPage);
+    await _jobsFuture;
   }
 
   @override
@@ -36,7 +44,7 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
     return Scaffold(
       backgroundColor: Colors.white, // Background flat putih
       // Menghapus AppBar agar judul menyatu dengan konten yang bisa discroll
-      body: FutureBuilder<List<JobVacancy>>(
+      body: FutureBuilder<JobVacancyPageResult>(
         future: _jobsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -89,7 +97,8 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
             );
           }
 
-          final jobs = snapshot.data ?? [];
+          final result = snapshot.data!;
+          final jobs = result.items;
 
           if (jobs.isEmpty) {
             return Center(
@@ -170,6 +179,17 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
                   }, childCount: jobs.length),
                 ),
               ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+                  child: _JobPagination(
+                    currentPage: result.currentPage,
+                    lastPage: result.lastPage,
+                    total: result.total,
+                    onPageChanged: (page) => _loadJobs(page: page),
+                  ),
+                ),
+              ),
               // Padding ekstra di bawah agar tidak tertutup Bottom Navigation Bar
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
@@ -182,12 +202,101 @@ class _JobVacancyPageState extends State<JobVacancyPage> {
           return RefreshIndicator(
             color: primaryColor,
             displacement: 12,
-            onRefresh: () async => _loadJobs(),
+            onRefresh: _refreshJobs,
             // Menggunakan CustomScrollView agar Header dan List bisa discroll bersamaan
             child: content,
           );
         },
       ),
+    );
+  }
+}
+
+class _JobPagination extends StatelessWidget {
+  final int currentPage;
+  final int lastPage;
+  final int total;
+  final ValueChanged<int> onPageChanged;
+
+  const _JobPagination({
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+    required this.onPageChanged,
+  });
+
+  List<int> get _visiblePages {
+    const maxVisiblePages = 3;
+    var start = currentPage - 2;
+    if (start < 1) start = 1;
+    var end = start + maxVisiblePages - 1;
+    if (end > lastPage) {
+      end = lastPage;
+      start = end - maxVisiblePages + 1;
+      if (start < 1) start = 1;
+    }
+    return List.generate(end - start + 1, (index) => start + index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF1E88E5);
+
+    return Column(
+      children: [
+        Text(
+          '$total lowongan | Halaman $currentPage dari $lastPage',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton.outlined(
+              onPressed: currentPage > 1
+                  ? () => onPageChanged(currentPage - 1)
+                  : null,
+              icon: const Icon(Icons.chevron_left_rounded),
+              tooltip: 'Halaman sebelumnya',
+            ),
+            const SizedBox(width: 6),
+            ..._visiblePages.map(
+              (page) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: page == currentPage
+                      ? FilledButton(
+                          onPressed: null,
+                          style: FilledButton.styleFrom(
+                            disabledBackgroundColor: primaryColor,
+                            disabledForegroundColor: Colors.white,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text('$page'),
+                        )
+                      : OutlinedButton(
+                          onPressed: () => onPageChanged(page),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: Text('$page'),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            IconButton.outlined(
+              onPressed: currentPage < lastPage
+                  ? () => onPageChanged(currentPage + 1)
+                  : null,
+              icon: const Icon(Icons.chevron_right_rounded),
+              tooltip: 'Halaman berikutnya',
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -199,8 +308,6 @@ class _JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final typeColor = _getJobTypeColor(job.jobType);
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -286,22 +393,14 @@ class _JobCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Info badges
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _Badge(
-                      text: _formatJobType(job.jobType),
-                      color: typeColor,
-                      icon: Icons.work_outline,
-                    ),
-                    _Badge(
-                      text: _formatCategory(job.category),
-                      color: Colors.purple,
-                      icon: Icons.category_outlined,
-                    ),
-                  ],
+                _JobMetaLine(
+                  label: 'Tipe pekerjaan',
+                  value: _formatJobType(job.jobType),
+                ),
+                const SizedBox(height: 6),
+                _JobMetaLine(
+                  label: 'Kategori',
+                  value: _formatCategory(job.category),
                 ),
 
                 const Padding(
@@ -320,17 +419,17 @@ class _JobCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.location_on_outlined,
-                                size: 14,
-                                color: Colors.grey.shade500,
+                                size: 16,
+                                color: Colors.grey.shade900,
                               ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   job.location,
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                    color: Colors.grey.shade900,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -343,17 +442,17 @@ class _JobCard extends StatelessWidget {
                             children: [
                               Icon(
                                 Icons.monetization_on_outlined,
-                                size: 14,
-                                color: Colors.green.shade600,
+                                size: 16,
+                                color: Colors.grey.shade900,
                               ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
                                   job.formattedSalary,
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.green.shade700,
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                    color: Colors.grey.shade900,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -365,36 +464,27 @@ class _JobCard extends StatelessWidget {
                       ),
                     ),
                     if (job.deadline != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Batas Akhir',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.red.shade700,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Batas Akhir',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(height: 2),
-                            Text(
-                              DateFormat('dd MMM yyyy').format(job.deadline!),
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.red.shade700,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            DateFormat('dd MMM yyyy').format(job.deadline!),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.red.shade700,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -480,8 +570,8 @@ class _JobCard extends StatelessWidget {
                     Text(
                       job.title,
                       style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: -0.5,
                         color: Colors.black87,
                       ),
@@ -499,53 +589,28 @@ class _JobCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 32),
 
-                    // Quick Info Grid
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _InfoBox(
-                            icon: Icons.location_on_outlined,
-                            label: 'Lokasi',
-                            value: job.location,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _InfoBox(
-                            icon: Icons.monetization_on_outlined,
-                            label: 'Gaji',
-                            value: job.formattedSalary,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
+                    _JobDetailInfo(label: 'Lokasi', value: job.location),
+                    const SizedBox(height: 12),
+                    _JobDetailInfo(label: 'Gaji', value: job.formattedSalary),
+                    const SizedBox(height: 12),
+                    _JobDetailInfo(
+                      label: 'Tipe pekerjaan',
+                      value: _formatJobType(job.jobType),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _InfoBox(
-                            icon: Icons.work_outline,
-                            label: 'Tipe',
-                            value: _formatJobType(job.jobType),
-                            color: Colors.orange,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _InfoBox(
-                            icon: Icons.calendar_today_outlined,
-                            label: 'Batas Akhir',
-                            value: job.deadline != null
-                                ? DateFormat(
-                                    'dd MMM yyyy',
-                                  ).format(job.deadline!)
-                                : 'Tidak ada',
-                            color: Colors.red,
-                          ),
-                        ),
-                      ],
+                    _JobDetailInfo(
+                      label: 'Kategori',
+                      value: _formatCategory(job.category),
+                    ),
+                    const SizedBox(height: 12),
+                    _JobDetailInfo(
+                      label: 'Batas akhir pendaftaran',
+                      value: job.deadline != null
+                          ? DateFormat('dd MMM yyyy').format(job.deadline!)
+                          : 'Tidak ada',
+                      valueColor: job.deadline != null
+                          ? Colors.red.shade700
+                          : null,
                     ),
 
                     const SizedBox(height: 32),
@@ -554,7 +619,7 @@ class _JobCard extends StatelessWidget {
                       'Deskripsi Pekerjaan',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w600,
                         color: Colors.black87,
                       ),
                     ),
@@ -572,7 +637,6 @@ class _JobCard extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 24),
-                    const Divider(height: 1),
                     const SizedBox(height: 24),
 
                     if (job.requirements != null &&
@@ -581,7 +645,7 @@ class _JobCard extends StatelessWidget {
                         'Persyaratan',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
@@ -680,16 +744,6 @@ class _JobCard extends StatelessWidget {
     );
   }
 
-  Color _getJobTypeColor(String type) {
-    return switch (type.toLowerCase()) {
-      'full_time' => Colors.blue,
-      'part_time' => Colors.orange,
-      'freelance' => Colors.teal,
-      'internship' => Colors.indigo,
-      _ => Colors.grey,
-    };
-  }
-
   String _formatJobType(String type) {
     return switch (type.toLowerCase()) {
       'full_time' => 'Full Time',
@@ -714,33 +768,24 @@ class _JobCard extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  final String text;
-  final Color color;
-  final IconData icon;
+class _JobMetaLine extends StatelessWidget {
+  final String label;
+  final String value;
 
-  const _Badge({required this.text, required this.color, required this.icon});
+  const _JobMetaLine({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    return Text.rich(
+      TextSpan(
+        style: const TextStyle(fontSize: 13, color: Colors.black54, fontWeight: FontWeight.w600),
         children: [
-          Icon(icon, size: 12, color: color),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
+          TextSpan(text: '$label : '),
+          TextSpan(
+            text: value,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -749,54 +794,40 @@ class _Badge extends StatelessWidget {
   }
 }
 
-class _InfoBox extends StatelessWidget {
-  final IconData icon;
+class _JobDetailInfo extends StatelessWidget {
   final String label;
   final String value;
-  final MaterialColor color;
+  final Color? valueColor;
 
-  const _InfoBox({
-    required this.icon,
+  const _JobDetailInfo({
     required this.label,
     required this.value,
-    required this.color,
+    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.shade50.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 24, color: color.shade600),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color.shade700,
-              fontWeight: FontWeight.w500,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.grey.shade800,
+            fontWeight: FontWeight.w600,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: Colors.black87,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: valueColor ?? Colors.grey.shade600,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

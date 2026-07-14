@@ -38,7 +38,11 @@ class AlumniEvent {
 
     // Helper to safely parse organizer
     String? parseOrganizer() {
-      final org = json['organizer'] ?? json['posted_by'] ?? json['author'] ?? json['user'];
+      final org =
+          json['organizer'] ??
+          json['posted_by'] ??
+          json['author'] ??
+          json['user'];
       if (org == null) return null;
       if (org is Map) {
         return org['name']?.toString() ?? 'Admin';
@@ -62,45 +66,93 @@ class AlumniEvent {
       title: json['title']?.toString() ?? 'Event Tanpa Judul',
       description: json['description']?.toString() ?? '',
       location: json['location']?.toString() ?? '-',
-      startDate: parseDate('event_date', 'eventDate') ?? parseDate('start_date', 'startDate') ?? DateTime.now(),
+      startDate:
+          parseDate('event_date', 'eventDate') ??
+          parseDate('start_date', 'startDate') ??
+          DateTime.now(),
       endDate: parseDate('end_date', 'endDate'),
-      status: json['is_active'] == false ? 'inactive' : (json['status']?.toString() ?? 'upcoming'),
-      approvalStatus: json['approval_status']?.toString() ?? 'approved', // default approved
+      status: json['is_active'] == false
+          ? 'inactive'
+          : (json['status']?.toString() ?? 'upcoming'),
+      approvalStatus:
+          json['approval_status']?.toString() ?? 'approved', // default approved
       organizer: parseOrganizer(),
       bannerImage: json['banner_image']?.toString(),
-      postedById: parseId(json['posted_by']) ?? parseId(json['user_id']) ?? parseId(json['author_id']),
+      postedById:
+          parseId(json['posted_by']) ??
+          parseId(json['user_id']) ??
+          parseId(json['author_id']),
     );
   }
 }
 
 class AlumniEventService {
   AlumniEventService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+    : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
 
-  Future<List<AlumniEvent>> fetchEvents() async {
-    final response = await _apiClient.get('/alumni-events');
-    
-    // 1. Ekstrak data mentah secara dinamis
-    dynamic rawData = response['data'] ?? response;
+  Future<AlumniEventPageResult> fetchEvents({
+    int page = 1,
+    int perPage = 10,
+  }) async {
+    final response = await _apiClient.get(
+      '/alumni-events',
+      queryParameters: {
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      },
+    );
 
-    // 2. Cek apakah ini bentuk Pagination Laravel (Terdapat key 'data' di dalam data)
-    if (rawData is Map<String, dynamic> && rawData.containsKey('data')) {
-      rawData = rawData['data'];
+    final rawData = response['data'] ?? response;
+
+    if (rawData is Map) {
+      final dataList = rawData['data'];
+      if (dataList is! List) {
+        throw Exception('Data event alumni tidak valid.');
+      }
+
+      return AlumniEventPageResult(
+        items: dataList
+            .whereType<Map>()
+            .map(
+              (item) => AlumniEvent.fromJson(Map<String, dynamic>.from(item)),
+            )
+            .toList(),
+        currentPage: _readInt(rawData['current_page'], fallback: page),
+        lastPage: _readInt(rawData['last_page']),
+        total: _readInt(rawData['total'], fallback: dataList.length),
+      );
     }
 
-    // 3. Pastikan tipe datanya adalah List
-    if (rawData is! List) {
-      if (rawData is String) return []; 
-      throw Exception('Data event alumni tidak valid.');
+    if (rawData is List) {
+      final items = rawData
+          .whereType<Map>()
+          .map((item) => AlumniEvent.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      return AlumniEventPageResult(
+        items: items,
+        currentPage: 1,
+        lastPage: 1,
+        total: items.length,
+      );
     }
 
-    // 4. Konversi secara eksplisit ke List<AlumniEvent>
-    return rawData
-        .where((e) => e != null) // Hindari jika ada element yang null
-        .map((e) => AlumniEvent.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
+    if (rawData is String) {
+      return const AlumniEventPageResult(
+        items: [],
+        currentPage: 1,
+        lastPage: 1,
+        total: 0,
+      );
+    }
+
+    throw Exception('Data event alumni tidak valid.');
+  }
+
+  int _readInt(dynamic value, {int fallback = 1}) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   Future<AlumniEvent> createEvent({
@@ -119,7 +171,10 @@ class AlumniEventService {
 
     dynamic response;
     if (bannerImagePath != null && bannerImagePath.isNotEmpty) {
-      final file = await http.MultipartFile.fromPath('banner_image', bannerImagePath);
+      final file = await http.MultipartFile.fromPath(
+        'banner_image',
+        bannerImagePath,
+      );
       response = await _apiClient.postMultipart(
         '/alumni-events',
         fields: fields,
@@ -128,7 +183,7 @@ class AlumniEventService {
     } else {
       response = await _apiClient.post('/alumni-events', body: fields);
     }
-    
+
     return AlumniEvent.fromJson(response['data'] as Map<String, dynamic>);
   }
 
@@ -149,7 +204,10 @@ class AlumniEventService {
 
     dynamic response;
     if (bannerImagePath != null && bannerImagePath.isNotEmpty) {
-      final file = await http.MultipartFile.fromPath('banner_image', bannerImagePath);
+      final file = await http.MultipartFile.fromPath(
+        'banner_image',
+        bannerImagePath,
+      );
       response = await _apiClient.postMultipart(
         '/alumni-events/$id',
         fields: fields,
@@ -158,11 +216,25 @@ class AlumniEventService {
     } else {
       response = await _apiClient.post('/alumni-events/$id', body: fields);
     }
-    
+
     return AlumniEvent.fromJson(response['data'] as Map<String, dynamic>);
   }
 
   Future<void> deleteEvent(int id) async {
     await _apiClient.delete('/alumni-events/$id');
   }
+}
+
+class AlumniEventPageResult {
+  final List<AlumniEvent> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  const AlumniEventPageResult({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
 }

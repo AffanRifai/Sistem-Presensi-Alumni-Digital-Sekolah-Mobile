@@ -125,24 +125,69 @@ class JobVacancyService {
 
   final ApiClient _apiClient;
 
-  Future<List<JobVacancy>> fetchVacancies() async {
-    final response = await _apiClient.get('/alumni/jobs');
+  Future<JobVacancyPageResult> fetchVacancies({
+    int page = 1,
+    int perPage = 10,
+  }) async {
+    final response = await _apiClient.get(
+      '/alumni/jobs',
+      queryParameters: {
+        'page': page.toString(),
+        'per_page': perPage.toString(),
+      },
+    );
 
-    // Karena Laravel menggunakan paginate(), datanya ada di dalam ['data']['data']
-    dynamic rawData = response['data'];
-    List dataList = [];
+    final rawData = response['data'];
 
-    if (rawData is Map && rawData.containsKey('data')) {
-      dataList = rawData['data'] as List;
-    } else if (rawData is List) {
-      dataList = rawData;
-    } else {
-      throw Exception('Data lowongan kerja tidak valid.');
+    if (rawData is Map) {
+      final dataList = rawData['data'];
+      if (dataList is! List) {
+        throw Exception('Data lowongan kerja tidak valid.');
+      }
+
+      return JobVacancyPageResult(
+        items: dataList
+            .whereType<Map>()
+            .map((item) => JobVacancy.fromJson(Map<String, dynamic>.from(item)))
+            .toList(),
+        currentPage: _readInt(rawData['current_page'], fallback: page),
+        lastPage: _readInt(rawData['last_page']),
+        total: _readInt(rawData['total'], fallback: dataList.length),
+      );
     }
 
-    return dataList
-        .whereType<Map<String, dynamic>>()
-        .map(JobVacancy.fromJson)
-        .toList();
+    if (rawData is List) {
+      final items = rawData
+          .whereType<Map>()
+          .map((item) => JobVacancy.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      return JobVacancyPageResult(
+        items: items,
+        currentPage: 1,
+        lastPage: 1,
+        total: items.length,
+      );
+    }
+
+    throw Exception('Data lowongan kerja tidak valid.');
   }
+
+  int _readInt(dynamic value, {int fallback = 1}) {
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+}
+
+class JobVacancyPageResult {
+  final List<JobVacancy> items;
+  final int currentPage;
+  final int lastPage;
+  final int total;
+
+  const JobVacancyPageResult({
+    required this.items,
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+  });
 }

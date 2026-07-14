@@ -426,24 +426,24 @@ class UserProfilePage extends StatelessWidget {
 
   // ── Tombol Logout ──
   Widget _buildLogoutButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => _handleLogout(context),
-        icon: const Icon(Icons.logout_rounded, color: Colors.red),
-        label: const Text(
-          'Keluar Akun',
-          style: TextStyle(
-            color: Colors.red,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+    return Align(
+      alignment: Alignment.center,
+      child: SizedBox(
+        width: 140,
+        height: 48,
+        child: FilledButton.icon(
+          onPressed: () => _handleLogout(context),
+          icon: const Icon(Icons.logout_rounded, size: 20),
+          label: const Text(
+            'Logout',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
           ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          side: BorderSide(color: Colors.red.shade300, width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFD32F2F),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(26),
+            ),
           ),
         ),
       ),
@@ -451,11 +451,15 @@ class UserProfilePage extends StatelessWidget {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
-    final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           title: const Text('Konfirmasi Keluar'),
           content: const Text('Apakah kamu yakin ingin keluar dari akun?'),
           actions: [
@@ -466,9 +470,12 @@ class UserProfilePage extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.error,
-                foregroundColor: theme.colorScheme.onError,
+                backgroundColor: const Color(0xFFD32F2F),
+                foregroundColor: Colors.white,
                 elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: const Text('Keluar'),
             ),

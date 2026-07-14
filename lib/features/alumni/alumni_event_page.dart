@@ -15,16 +15,18 @@ class AlumniEventPage extends StatefulWidget {
 
 class _AlumniEventPageState extends State<AlumniEventPage> {
   final _service = AlumniEventService();
-  late Future<List<AlumniEvent>> _eventsFuture;
+  late Future<AlumniEventPageResult> _eventsFuture;
   int? _currentUserId;
+  int _currentPage = 1;
 
   @override
   void initState() {
     super.initState();
-    _loadUserAndEvents();
+    _loadEvents();
+    _loadCurrentUser();
   }
 
-  Future<void> _loadUserAndEvents() async {
+  Future<void> _loadCurrentUser() async {
     try {
       final user = await AuthService().readUser();
       if (mounted) {
@@ -33,14 +35,19 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
     } catch (e) {
       debugPrint('Gagal memuat user: $e');
     }
-
-    _loadEvents();
   }
 
-  void _loadEvents() {
+  void _loadEvents({int? page}) {
+    final requestedPage = page ?? _currentPage;
     setState(() {
-      _eventsFuture = _service.fetchEvents();
+      _currentPage = requestedPage;
+      _eventsFuture = _service.fetchEvents(page: requestedPage, perPage: 10);
     });
+  }
+
+  Future<void> _refreshEvents() async {
+    _loadEvents(page: _currentPage);
+    await _eventsFuture;
   }
 
   @override
@@ -48,7 +55,9 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
     const primaryColor = Color(0xFF1E88E5); // Disesuaikan dengan HomePage
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // Latar belakang sangat lembut agar flat card putih terlihat
+      backgroundColor: const Color(
+        0xFFF9FAFB,
+      ), // Latar belakang sangat lembut agar flat card putih terlihat
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -60,7 +69,10 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: Colors.grey.shade200, height: 1), // Garis flat pemisah appBar
+          child: Container(
+            color: Colors.grey.shade200,
+            height: 1,
+          ), // Garis flat pemisah appBar
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -69,69 +81,86 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Buat Event', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+        label: const Text(
+          'Buat Event',
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
         onPressed: () async {
           // Pastikan user sudah diload
           if (_currentUserId == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Tunggu sebentar, sedang memuat data akun...')),
+              const SnackBar(
+                content: Text('Tunggu sebentar, sedang memuat data akun...'),
+              ),
             );
             return;
           }
 
           try {
             // Ambil daftar event yang saat ini ada di layar
-            final events = await _eventsFuture;
-            
+            final result = await _eventsFuture;
+            if (!context.mounted) return;
+            final events = result.items;
+
             // Hitung berapa banyak event yang diposting oleh user yang sedang login
-            final myEventCount = events.where((e) => e.postedById == _currentUserId).length;
+            final myEventCount = events
+                .where((e) => e.postedById == _currentUserId)
+                .length;
 
             // Cek apakah sudah mencapai batas maksimal (misal: 5)
             if (myEventCount >= 5) {
-              if (mounted) {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: const Text('Batas Tercapai', style: TextStyle(fontWeight: FontWeight.bold)),
-                    content: const Text(
-                      'Kamu sudah mengajukan 5 event. Untuk saat ini, kamu tidak dapat mengajukan event baru lagi.',
-                      style: TextStyle(color: Colors.black87, height: 1.4),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(foregroundColor: primaryColor),
-                        child: const Text('Mengerti', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                );
-              }
+                  title: const Text(
+                    'Batas Tercapai',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  content: const Text(
+                    'Kamu sudah mengajukan 5 event. Untuk saat ini, kamu tidak dapat mengajukan event baru lagi.',
+                    style: TextStyle(color: Colors.black87, height: 1.4),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: primaryColor,
+                      ),
+                      child: const Text(
+                        'Mengerti',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              );
               return; // Hentikan proses, jangan buka form
             }
 
             // Jika belum mencapai batas, buka form pengajuan
-            if (mounted) {
-              final result = await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AlumniEventFormPage()),
-              );
-              
-              if (result == true) {
-                _loadEvents();
-              }
+            final formResult = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AlumniEventFormPage()),
+            );
+            if (!mounted) return;
+
+            if (formResult == true) {
+              _loadEvents(page: 1);
             }
           } catch (e) {
             // Tangani jika _eventsFuture gagal dimuat
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Gagal memverifikasi jumlah event.')),
-              );
-            }
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Gagal memverifikasi jumlah event.'),
+              ),
+            );
           }
         },
       ),
-      body: FutureBuilder<List<AlumniEvent>>(
+      body: FutureBuilder<AlumniEventPageResult>(
         future: _eventsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -147,27 +176,43 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
             );
           }
 
-          final events = snapshot.data!;
+          final result = snapshot.data!;
+          final events = result.items;
           if (events.isEmpty) {
             return const _EmptyView();
           }
 
           return RefreshIndicator(
             color: primaryColor,
-            onRefresh: () async {
-              _loadEvents();
-              await _eventsFuture;
-            },
+            onRefresh: _refreshEvents,
             child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 100), // Bottom padding untuk area FAB
-              itemCount: events.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) => _EventCard(
-                event: events[index],
-                currentUserId: _currentUserId,
-                onRefresh: _loadEvents,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
+              padding: const EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: 100,
+              ), // Bottom padding untuk area FAB
+              itemCount: events.length + 1,
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                if (index == events.length) {
+                  return _EventPagination(
+                    currentPage: result.currentPage,
+                    lastPage: result.lastPage,
+                    total: result.total,
+                    onPageChanged: (page) => _loadEvents(page: page),
+                  );
+                }
+
+                return _EventCard(
+                  event: events[index],
+                  currentUserId: _currentUserId,
+                  onRefresh: () => _loadEvents(),
+                );
+              },
             ),
           );
         },
@@ -177,6 +222,98 @@ class _AlumniEventPageState extends State<AlumniEventPage> {
 }
 
 // ─── Error View ───────────────────────────────────────────────────────────────
+class _EventPagination extends StatelessWidget {
+  final int currentPage;
+  final int lastPage;
+  final int total;
+  final ValueChanged<int> onPageChanged;
+
+  const _EventPagination({
+    required this.currentPage,
+    required this.lastPage,
+    required this.total,
+    required this.onPageChanged,
+  });
+
+  List<int> get _visiblePages {
+    const maxVisiblePages = 3;
+    var start = currentPage - 2;
+    if (start < 1) start = 1;
+    var end = start + maxVisiblePages - 1;
+    if (end > lastPage) {
+      end = lastPage;
+      start = end - maxVisiblePages + 1;
+      if (start < 1) start = 1;
+    }
+    return List.generate(end - start + 1, (index) => start + index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF1E88E5);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        children: [
+          Text(
+            '$total event | Halaman $currentPage dari $lastPage',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton.outlined(
+                onPressed: currentPage > 1
+                    ? () => onPageChanged(currentPage - 1)
+                    : null,
+                icon: const Icon(Icons.chevron_left_rounded),
+                tooltip: 'Halaman sebelumnya',
+              ),
+              const SizedBox(width: 6),
+              ..._visiblePages.map(
+                (page) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: SizedBox(
+                    width: 38,
+                    height: 38,
+                    child: page == currentPage
+                        ? FilledButton(
+                            onPressed: null,
+                            style: FilledButton.styleFrom(
+                              disabledBackgroundColor: primaryColor,
+                              disabledForegroundColor: Colors.white,
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Text('$page'),
+                          )
+                        : OutlinedButton(
+                            onPressed: () => onPageChanged(page),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                            ),
+                            child: Text('$page'),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton.outlined(
+                onPressed: currentPage < lastPage
+                    ? () => onPageChanged(currentPage + 1)
+                    : null,
+                icon: const Icon(Icons.chevron_right_rounded),
+                tooltip: 'Halaman berikutnya',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -194,31 +331,54 @@ class _ErrorView extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-              child: const Icon(Icons.error_outline, size: 48, color: Color(0xFFE57373)),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Color(0xFFE57373),
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
               'Gagal Memuat Event',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh),
-              label: const Text('Coba Lagi', style: TextStyle(fontWeight: FontWeight.bold)),
+              label: const Text(
+                'Coba Lagi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ],
@@ -242,19 +402,34 @@ class _EmptyView extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-              child: Icon(Icons.event_busy_outlined, size: 64, color: Colors.grey.shade400),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.event_busy_outlined,
+                size: 64,
+                color: Colors.grey.shade400,
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
               'Belum Ada Event',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Saat ini belum ada event alumni yang tersedia. Jadilah yang pertama membuat event!',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
             ),
           ],
         ),
@@ -280,8 +455,13 @@ class _EventCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hapus Event', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Apakah Anda yakin ingin menghapus event ini? Aksi ini tidak dapat dibatalkan.'),
+        title: const Text(
+          'Hapus Event',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Apakah Anda yakin ingin menghapus event ini? Aksi ini tidak dapat dibatalkan.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -294,7 +474,10 @@ class _EventCard extends StatelessWidget {
               foregroundColor: Colors.red.shade700,
               elevation: 0,
             ),
-            child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -311,9 +494,9 @@ class _EventCard extends StatelessWidget {
         }
       } catch (e) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal menghapus event: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Gagal menghapus event: $e')));
         }
       }
     }
@@ -333,7 +516,8 @@ class _EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusInfo = _getStatusInfo(event.status);
-    final canEditOrDelete = event.postedById == currentUserId && event.approvalStatus == 'pending';
+    final canEditOrDelete =
+        event.postedById == currentUserId && event.approvalStatus == 'pending';
 
     return InkWell(
       onTap: () {
@@ -349,7 +533,10 @@ class _EventCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200, width: 1.2), // Layout flat dengan border
+          border: Border.all(
+            color: Colors.grey.shade200,
+            width: 1.2,
+          ), // Layout flat dengan border
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +552,10 @@ class _EventCard extends StatelessWidget {
                     children: [
                       // Badge Status Event (Akan Datang, Berlangsung, dll)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: statusInfo.bgColor,
                           borderRadius: BorderRadius.circular(8),
@@ -382,7 +572,10 @@ class _EventCard extends StatelessWidget {
                       // Badge Pending Approval
                       if (event.approvalStatus == 'pending')
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange.shade50,
                             borderRadius: BorderRadius.circular(8),
@@ -391,7 +584,11 @@ class _EventCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.hourglass_bottom_rounded, size: 12, color: Colors.orange.shade700),
+                              Icon(
+                                Icons.hourglass_bottom_rounded,
+                                size: 12,
+                                color: Colors.orange.shade700,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 'Menunggu Persetujuan',
@@ -413,8 +610,14 @@ class _EventCard extends StatelessWidget {
                     width: 24,
                     child: PopupMenuButton<String>(
                       padding: EdgeInsets.zero,
-                      icon: Icon(Icons.more_vert, size: 20, color: Colors.grey.shade500),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      icon: Icon(
+                        Icons.more_vert,
+                        size: 20,
+                        color: Colors.grey.shade500,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       onSelected: (value) {
                         if (value == 'edit') _handleEdit(context);
                         if (value == 'delete') _handleDelete(context);
@@ -424,9 +627,16 @@ class _EventCard extends StatelessWidget {
                           value: 'edit',
                           child: Row(
                             children: [
-                              Icon(Icons.edit_outlined, size: 18, color: Color(0xFF1E88E5)),
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 18,
+                                color: Color(0xFF1E88E5),
+                              ),
                               SizedBox(width: 10),
-                              Text('Edit Event', style: TextStyle(fontWeight: FontWeight.w500)),
+                              Text(
+                                'Edit Event',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
                             ],
                           ),
                         ),
@@ -434,9 +644,19 @@ class _EventCard extends StatelessWidget {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                              Icon(
+                                Icons.delete_outline,
+                                size: 18,
+                                color: Colors.red,
+                              ),
                               SizedBox(width: 10),
-                              Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
+                              Text(
+                                'Hapus',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -446,7 +666,7 @@ class _EventCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // ── Judul ──
             Text(
               event.title,
@@ -471,7 +691,8 @@ class _EventCard extends StatelessWidget {
                   width: double.infinity,
                   height: 140,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox(),
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox(),
                 ),
               ),
               const SizedBox(height: 12),
@@ -501,16 +722,10 @@ class _EventCard extends StatelessWidget {
               text: _formatDateRange(event.startDate, event.endDate),
             ),
             const SizedBox(height: 8),
-            _DetailRow(
-              icon: Icons.location_on_outlined,
-              text: event.location,
-            ),
+            _DetailRow(icon: Icons.location_on_outlined, text: event.location),
             if (event.organizer != null && event.organizer!.isNotEmpty) ...[
               const SizedBox(height: 8),
-              _DetailRow(
-                icon: Icons.person_outline,
-                text: event.organizer!,
-              ),
+              _DetailRow(icon: Icons.person_outline, text: event.organizer!),
             ],
           ],
         ),
@@ -520,8 +735,18 @@ class _EventCard extends StatelessWidget {
 
   String _formatDateRange(DateTime start, DateTime? end) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
     ];
     final startStr = '${start.day} ${months[start.month - 1]} ${start.year}';
     if (end == null || end == start) return startStr;
@@ -532,30 +757,30 @@ class _EventCard extends StatelessWidget {
   _StatusInfo _getStatusInfo(String status) {
     return switch (status.toLowerCase()) {
       'upcoming' => const _StatusInfo(
-          label: 'Akan Datang',
-          color: Color(0xFF1E88E5), // Menggunakan primaryBlue
-          bgColor: Color(0xFFE3F2FD), // Blue.shade50
-        ),
+        label: 'Akan Datang',
+        color: Color(0xFF1E88E5), // Menggunakan primaryBlue
+        bgColor: Color(0xFFE3F2FD), // Blue.shade50
+      ),
       'ongoing' => const _StatusInfo(
-          label: 'Berlangsung',
-          color: Color(0xFF43A047),
-          bgColor: Color(0xFFE8F5E9),
-        ),
+        label: 'Berlangsung',
+        color: Color(0xFF43A047),
+        bgColor: Color(0xFFE8F5E9),
+      ),
       'done' || 'completed' => _StatusInfo(
-          label: 'Selesai',
-          color: Colors.grey.shade600,
-          bgColor: Colors.grey.shade100,
-        ),
+        label: 'Selesai',
+        color: Colors.grey.shade600,
+        bgColor: Colors.grey.shade100,
+      ),
       'cancelled' => const _StatusInfo(
-          label: 'Dibatalkan',
-          color: Color(0xFFE53935),
-          bgColor: Color(0xFFFFEBEE),
-        ),
+        label: 'Dibatalkan',
+        color: Color(0xFFE53935),
+        bgColor: Color(0xFFFFEBEE),
+      ),
       _ => _StatusInfo(
-          label: status,
-          color: Color(0xFFF57C00),
-          bgColor: Color(0xFFFFF3E0),
-        ),
+        label: status,
+        color: Color(0xFFF57C00),
+        bgColor: Color(0xFFFFF3E0),
+      ),
     };
   }
 }

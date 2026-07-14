@@ -199,7 +199,7 @@ class _AlumniProfileEditPageState extends State<AlumniProfileEditPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Edit Profil Alumni', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('Edit Profil Alumni', style: TextStyle(fontWeight: FontWeight.w600)),
         backgroundColor: Colors.transparent,
         foregroundColor: theme.colorScheme.onSurface,
         elevation: 0,

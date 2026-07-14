@@ -28,7 +28,9 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
         content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
         actions: [
@@ -39,9 +41,12 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade50,
-              foregroundColor: Colors.red.shade700,
+              backgroundColor: const Color(0xFFD32F2F),
+              foregroundColor: Colors.white,
               elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -362,24 +367,27 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 16),
                 
                 // ── Tombol Logout Besar di Bawah ──
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: onLogoutTap,
-                    icon: const Icon(Icons.logout_rounded, color: Colors.red),
-                    label: const Text(
-                      'Keluar Akun',
-                      style: TextStyle(
-                        color: Colors.red,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                Align(
+                  alignment: Alignment.center,
+                  child: SizedBox(
+                    width: 140,
+                    height: 48,
+                    child: FilledButton.icon(
+                      onPressed: onLogoutTap,
+                      icon: const Icon(Icons.logout_rounded, size: 20),
+                      label: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      side: BorderSide(color: Colors.red.shade300, width: 1.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFD32F2F),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26),
+                        ),
                       ),
                     ),
                   ),
