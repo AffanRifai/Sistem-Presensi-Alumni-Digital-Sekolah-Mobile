@@ -3,8 +3,8 @@ import 'data/alumni_service.dart';
 import 'alumni_profile_edit_page.dart';
 import '../../core/errors/error_mapper.dart';
 
-import '../auth/data/auth_service.dart'; 
-import '../auth/login_page.dart'; 
+import '../auth/data/auth_service.dart';
+import '../auth/login_page.dart';
 
 class AlumniProfilePage extends StatefulWidget {
   const AlumniProfilePage({super.key});
@@ -32,7 +32,10 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Keluar Akun', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Keluar Akun',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
         actions: [
           TextButton(
@@ -49,7 +52,10 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            child: const Text('Keluar', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Keluar',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -88,10 +94,11 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AlumniProfileEditPage(currentProfile: snapshotData!),
+        builder: (context) =>
+            AlumniProfileEditPage(currentProfile: snapshotData!),
       ),
     );
-    
+
     if (result == true && mounted) {
       setState(() {
         _profileFuture = _service.fetchProfile();
@@ -139,7 +146,7 @@ class _AlumniProfilePageState extends State<AlumniProfilePage> {
 
           final profile = snapshot.data!;
           snapshotData = profile;
-          
+
           return _ProfileContent(
             profile: profile,
             onEditTap: _handleEdit,
@@ -190,7 +197,10 @@ class _ErrorView extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4A90D9),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -225,7 +235,7 @@ class _ProfileContent extends StatelessWidget {
         children: [
           // ── Header Avatar + Nama (Desain Baru) ──
           _buildHeader(),
-          
+
           const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0)),
           const SizedBox(height: 24),
 
@@ -261,7 +271,7 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 _buildSection(
                   title: 'Informasi Sekolah',
                   icon: Icons.school_outlined,
@@ -278,7 +288,7 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 if (profile.currentStatus != null)
                   _buildSection(
                     title: 'Status Saat Ini',
@@ -292,15 +302,25 @@ class _ProfileContent extends StatelessWidget {
                       _InfoRow(
                         icon: Icons.school_outlined,
                         label: 'Pendidikan Lanjut',
-                        value: (profile.universityName != null || profile.studyProgram != null) 
-                            ? '${profile.universityName ?? ''} - ${profile.studyProgram ?? ''}'.trim().replaceAll(RegExp(r'^-|-$'), '').trim()
+                        value:
+                            (profile.universityName != null ||
+                                profile.studyProgram != null)
+                            ? '${profile.universityName ?? ''} - ${profile.studyProgram ?? ''}'
+                                  .trim()
+                                  .replaceAll(RegExp(r'^-|-$'), '')
+                                  .trim()
                             : '-',
                       ),
                       _InfoRow(
                         icon: Icons.business_outlined,
                         label: 'Pekerjaan',
-                        value: (profile.companyName != null || profile.jobPosition != null)
-                            ? '${profile.companyName ?? ''} - ${profile.jobPosition ?? ''}'.trim().replaceAll(RegExp(r'^-|-$'), '').trim()
+                        value:
+                            (profile.companyName != null ||
+                                profile.jobPosition != null)
+                            ? '${profile.companyName ?? ''} - ${profile.jobPosition ?? ''}'
+                                  .trim()
+                                  .replaceAll(RegExp(r'^-|-$'), '')
+                                  .trim()
                             : '-',
                       ),
                       _InfoRow(
@@ -310,7 +330,7 @@ class _ProfileContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                
+
                 _buildSection(
                   title: 'Kontak & Lokasi',
                   icon: Icons.location_on_outlined,
@@ -319,7 +339,10 @@ class _ProfileContent extends StatelessWidget {
                       icon: Icons.location_city_outlined,
                       label: 'Lokasi',
                       value: (profile.city != null || profile.province != null)
-                          ? '${profile.city ?? ''}, ${profile.province ?? ''}'.trim().replaceAll(RegExp(r'^,|,$'), '').trim()
+                          ? '${profile.city ?? ''}, ${profile.province ?? ''}'
+                                .trim()
+                                .replaceAll(RegExp(r'^,|,$'), '')
+                                .trim()
                           : '-',
                     ),
                     _InfoRow(
@@ -334,7 +357,7 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 _buildSection(
                   title: 'Status',
                   icon: Icons.verified_outlined,
@@ -358,29 +381,35 @@ class _ProfileContent extends StatelessWidget {
                   children: [
                     _buildFaqTile(
                       context,
-                      question: 'Apa saja yang bisa saya lakukan sebagai alumni?',
-                      answer: 'Sebagai alumni, Anda dapat memperbarui data tracer study (pekerjaan/pendidikan), membuat & mengajukan Event Reuni/Alumni, serta melamar Lowongan Pekerjaan (Job Vacancy).',
+                      question:
+                          'Apa saja yang bisa saya lakukan sebagai alumni?',
+                      answer:
+                          'Sebagai alumni, Anda dapat memperbarui data tracer study (pekerjaan/pendidikan), membuat & mengajukan Event Reuni/Alumni, serta melamar Lowongan Pekerjaan (Job Vacancy).',
                     ),
                     _buildFaqTile(
                       context,
                       question: 'Bagaimana cara memperbarui status karir saya?',
-                      answer: 'Tekan tombol "Edit Profil" (ikon pensil) di samping nama Anda di bagian atas halaman ini, lalu perbarui status pendidikan, pekerjaan, atau usaha Anda saat ini.',
+                      answer:
+                          'Tekan tombol "Edit Profil" (ikon pensil) di samping nama Anda di bagian atas halaman ini, lalu perbarui status pendidikan, pekerjaan, atau usaha Anda saat ini.',
                     ),
                     _buildFaqTile(
                       context,
                       question: 'Bagaimana cara membuat Event Alumni baru?',
-                      answer: 'Pergi ke menu "Event" di halaman utama aplikasi, tekan tombol "Buat Event" di pojok kanan bawah, isi detail event Anda, lalu ajukan untuk disetujui pihak admin sekolah.',
+                      answer:
+                          'Pergi ke menu "Event" di halaman utama aplikasi, tekan tombol "Buat Event" di pojok kanan bawah, isi detail event Anda, lalu ajukan untuk disetujui pihak admin sekolah.',
                     ),
                     _buildFaqTile(
                       context,
-                      question: 'Mengapa pengisian profil ini penting bagi sekolah?',
-                      answer: 'Data karir alumni yang akurat sangat membantu akreditasi sekolah, penelusuran tracer study, serta memberikan referensi keselarasan kurikulum dengan kebutuhan industri.',
+                      question:
+                          'Mengapa pengisian profil ini penting bagi sekolah?',
+                      answer:
+                          'Data karir alumni yang akurat sangat membantu akreditasi sekolah, penelusuran tracer study, serta memberikan referensi keselarasan kurikulum dengan kebutuhan industri.',
                     ),
                   ],
                 ),
 
                 const SizedBox(height: 16),
-                
+
                 // ── Tombol Logout Besar di Bawah ──
                 Align(
                   alignment: Alignment.center,
@@ -419,7 +448,7 @@ class _ProfileContent extends StatelessWidget {
   // --- Desain Header Baru Tanpa Gradient ---
   Widget _buildHeader() {
     const primaryColor = Color(0xFF4A90D9);
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Row(
@@ -430,7 +459,10 @@ class _ProfileContent extends StatelessWidget {
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: primaryColor.withOpacity(0.15), width: 1.5),
+              border: Border.all(
+                color: primaryColor.withOpacity(0.15),
+                width: 1.5,
+              ),
             ),
             child: CircleAvatar(
               radius: 40,
@@ -463,7 +495,10 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 6),
                 // Role Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -480,7 +515,11 @@ class _ProfileContent extends StatelessWidget {
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: onEditTap,
-                  icon: const Icon(Icons.edit_outlined, size: 16, color: primaryColor),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: primaryColor,
+                  ),
                   label: const Text(
                     'Edit Profil',
                     style: TextStyle(
@@ -490,7 +529,10 @@ class _ProfileContent extends StatelessWidget {
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     side: BorderSide(color: primaryColor.withOpacity(0.4)),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -536,11 +578,14 @@ class _ProfileContent extends StatelessWidget {
             collapsedIconColor: Colors.grey.shade600,
             textColor: Colors.black87,
             collapsedTextColor: Colors.black87,
-            shape: const Border(), // Menghilangkan garis atas/bawah bawaan saat terbuka
+            shape:
+                const Border(), // Menghilangkan garis atas/bawah bawaan saat terbuka
             collapsedShape: const Border(),
             tilePadding: EdgeInsets.zero,
             childrenPadding: const EdgeInsets.only(left: 40, bottom: 12),
-            initiallyExpanded: title == 'Informasi Akun', // Informasi akun terbuka secara default
+            initiallyExpanded:
+                title ==
+                'Informasi Akun', // Informasi akun terbuka secara default
             children: children,
           ),
         ),
@@ -550,7 +595,11 @@ class _ProfileContent extends StatelessWidget {
     );
   }
 
-  Widget _buildFaqTile(BuildContext context, {required String question, required String answer}) {
+  Widget _buildFaqTile(
+    BuildContext context, {
+    required String question,
+    required String answer,
+  }) {
     const primaryColor = Color(0xFF4A90D9);
     return Theme(
       data: ThemeData().copyWith(
@@ -632,7 +681,9 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12), // Menghapus padding horizontal agar rata kiri
+      padding: const EdgeInsets.symmetric(
+        vertical: 12,
+      ), // Menghapus padding horizontal agar rata kiri
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -644,7 +695,11 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

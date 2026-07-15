@@ -21,13 +21,13 @@ class ClassRecapModel {
     final homeroomTeacher = json['homeroom_teacher'];
 
     return ClassRecapModel(
-      id: json['id'] as int,
+      id: _asInt(json['id']),
       name: json['name']?.toString() ?? '-',
       grade: json['grade']?.toString() ?? '-',
       major: json['major']?.toString() ?? '-',
-      studentCount: json['students_count'] as int? ?? 0,
+      studentCount: _asInt(json['students_count']),
       homeroomTeacherId: homeroomTeacher is Map<String, dynamic>
-          ? homeroomTeacher['id'] as int?
+          ? _asNullableInt(homeroomTeacher['id'])
           : null,
       homeroomTeacherName: homeroomTeacher is Map<String, dynamic>
           ? homeroomTeacher['name']?.toString() ?? '-'
@@ -70,7 +70,7 @@ class StudentRecapModel {
     final gender = json['gender']?.toString();
 
     return StudentRecapModel(
-      id: json['id'] as int,
+      id: _asInt(json['id']),
       nis: json['nis']?.toString() ?? '-',
       nisn: json['nisn']?.toString() ?? '-',
       fullName: json['name']?.toString() ?? '-',
@@ -81,4 +81,16 @@ class StudentRecapModel {
       parentPhone: parentPhone?.isNotEmpty == true ? parentPhone! : '-',
     );
   }
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _asNullableInt(dynamic value) {
+  if (value == null) return null;
+  final parsed = _asInt(value);
+  return parsed == 0 ? null : parsed;
 }

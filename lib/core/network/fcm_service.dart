@@ -8,7 +8,7 @@ class FcmService {
   FcmService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   static bool _isInitialized = false;
-  static const String _channelId = 'attendance_notifications';
+  static const String _channelId = 'attendance_notifications_v3';
   static const String _channelName = 'Presensi Sekolah';
   static final Set<String> _processedMessageKeys = <String>{};
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -16,10 +16,35 @@ class FcmService {
 
   final ApiClient _apiClient;
 
+  @pragma('vm:entry-point')
+  static Future<void> handleBackgroundMessage(RemoteMessage message) async {
+    if (kIsWeb || message.notification != null) return;
+
+    try {
+      await _initializeLocalNotifications(requestPermission: false);
+
+      final title = message.data['title']?.toString() ?? 'Notifikasi SIMPAD';
+      final body =
+          message.data['body']?.toString() ??
+          message.data['message']?.toString() ??
+          '';
+
+      await _showNotification(title, body, message);
+    } catch (error) {
+      if (kDebugMode) {
+        print('[FcmService] Gagal memproses push background: $error');
+      }
+    }
+  }
+
   /// Inisialisasi Firebase Messaging
   Future<void> init() async {
     if (kIsWeb) return; // Web push ditangani terpisah
-    if (_isInitialized) return;
+    if (_isInitialized) {
+      await registerDeviceToken();
+      await NotificationController.instance.refreshUnreadCount();
+      return;
+    }
 
     try {
       // 1. Minta izin notifikasi (iOS/Android 13+)
@@ -34,7 +59,7 @@ class FcmService {
         badge: true,
         sound: true,
       );
-      await _initLocalNotifications();
+      await _initializeLocalNotifications();
 
       if (kDebugMode) {
         print('[FcmService] Izin notifikasi: ${settings.authorizationStatus}');
@@ -48,14 +73,27 @@ class FcmService {
       });
 
       // 3. Tangani notifikasi saat aplikasi di foreground (aktif dibuka)
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         if (_isDuplicateMessage(message)) return;
 
-        final title = message.notification?.title ?? 'Notifikasi';
-        final body = message.notification?.body ?? '';
+        final title =
+            message.notification?.title ??
+            message.data['title']?.toString() ??
+            'Notifikasi';
+        final body =
+            message.notification?.body ??
+            message.data['body']?.toString() ??
+            message.data['message']?.toString() ??
+            '';
 
         NotificationController.instance.handleIncomingPush();
-        _showLocalNotification(title, body, message);
+        try {
+          await _showLocalNotification(title, body, message);
+        } catch (error) {
+          if (kDebugMode) {
+            print('[FcmService] Gagal menampilkan notifikasi lokal: $error');
+          }
+        }
 
         if (kDebugMode) {
           print('[FcmService] Menerima notifikasi foreground!');
@@ -67,6 +105,11 @@ class FcmService {
         NotificationController.instance.load(silent: true);
       });
 
+      final initialMessage = await messaging.getInitialMessage();
+      if (initialMessage != null) {
+        NotificationController.instance.load(silent: true);
+      }
+
       _isInitialized = true;
     } catch (e) {
       if (kDebugMode) {
@@ -75,7 +118,9 @@ class FcmService {
     }
   }
 
-  Future<void> _initLocalNotifications() async {
+  static Future<void> _initializeLocalNotifications({
+    bool requestPermission = true,
+  }) async {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
@@ -97,17 +142,23 @@ class FcmService {
       playSound: true,
     );
 
-    await _localNotifications
+    final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(androidChannel);
+        >();
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.requestNotificationsPermission();
+    await androidPlugin?.createNotificationChannel(androidChannel);
+    final permissionGranted = requestPermission
+        ? await androidPlugin?.requestNotificationsPermission()
+        : null;
+    final notificationsEnabled = await androidPlugin?.areNotificationsEnabled();
+
+    if (kDebugMode) {
+      print(
+        '[FcmService] Notifikasi Android: '
+        'permission=$permissionGranted, enabled=$notificationsEnabled',
+      );
+    }
   }
 
   /// Ambil token perangkat dan daftarkan ke Laravel backend
@@ -143,6 +194,12 @@ class FcmService {
   }
 
   Future<void> _showLocalNotification(
+    String title,
+    String body,
+    RemoteMessage message,
+  ) => _showNotification(title, body, message);
+
+  static Future<void> _showNotification(
     String title,
     String body,
     RemoteMessage message,

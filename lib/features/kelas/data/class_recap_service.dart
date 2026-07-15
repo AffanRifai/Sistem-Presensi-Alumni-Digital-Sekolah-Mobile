@@ -9,34 +9,42 @@ class ClassRecapService {
 
   Future<List<ClassRecapModel>> fetchClasses() async {
     final response = await _apiClient.get('/classes');
-    final data = response['data'];
-
-    if (data is! List) {
-      return const [];
-    }
+    final data = _extractList(response['data'], key: 'classes');
 
     return data
-        .whereType<Map<String, dynamic>>()
-        .map(ClassRecapModel.fromJson)
+        .whereType<Map>()
+        .map(
+          (item) => ClassRecapModel.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
   }
 
   Future<List<StudentRecapModel>> fetchStudents(int classId) async {
     final response = await _apiClient.get('/classes/$classId/students');
-    final data = response['data'];
-
-    if (data is! Map<String, dynamic>) {
-      return const [];
-    }
-
-    final students = data['students'];
-    if (students is! List) {
-      return const [];
-    }
+    final students = _extractList(response['data'], key: 'students');
 
     return students
-        .whereType<Map<String, dynamic>>()
-        .map(StudentRecapModel.fromJson)
+        .whereType<Map>()
+        .map(
+          (item) => StudentRecapModel.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
+  }
+
+  List<dynamic> _extractList(dynamic payload, {required String key}) {
+    if (payload is List) return payload;
+    if (payload is! Map) return const [];
+
+    final map = Map<String, dynamic>.from(payload);
+    final direct = map[key];
+    if (direct is List) return direct;
+
+    final nestedData = map['data'];
+    if (nestedData is List) return nestedData;
+    if (nestedData is Map && nestedData[key] is List) {
+      return nestedData[key] as List;
+    }
+
+    return const [];
   }
 }

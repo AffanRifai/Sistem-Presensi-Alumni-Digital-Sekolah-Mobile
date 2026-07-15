@@ -13,7 +13,7 @@ class DailyAttendanceRow {
 
   factory DailyAttendanceRow.fromJson(Map<String, dynamic> json) {
     return DailyAttendanceRow(
-      studentId: json['student_id'] as int,
+      studentId: _asInt(json['student_id'] ?? json['id']),
       name: json['name']?.toString() ?? '-',
       nis: json['nis']?.toString() ?? '-',
       status: _statusLabel(json['status']?.toString()),
@@ -49,14 +49,14 @@ class MonthlyAttendanceRow {
         : <String, dynamic>{};
 
     return MonthlyAttendanceRow(
-      studentId: json['student_id'] as int,
+      studentId: _asInt(json['student_id'] ?? json['id']),
       name: json['name']?.toString() ?? '-',
       nis: json['nis']?.toString() ?? '-',
-      hadir: counts['present'] as int? ?? 0,
-      terlambat: counts['late'] as int? ?? 0,
-      izin: counts['permission'] as int? ?? 0,
-      sakit: counts['sick'] as int? ?? 0,
-      alpha: counts['absent'] as int? ?? 0,
+      hadir: _asInt(counts['present']),
+      terlambat: _asInt(counts['late']),
+      izin: _asInt(counts['permission']),
+      sakit: _asInt(counts['sick']),
+      alpha: _asInt(counts['absent']),
     );
   }
 
@@ -71,6 +71,12 @@ class MonthlyAttendanceRow {
       'Alpha': alpha,
     };
   }
+}
+
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 String _statusLabel(String? status) {

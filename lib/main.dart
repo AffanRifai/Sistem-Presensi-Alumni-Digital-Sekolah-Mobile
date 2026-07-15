@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'core/errors/error_mapper.dart';
 import 'core/navigation/app_navigator.dart';
+import 'core/network/fcm_service.dart';
 import 'features/auth/data/auth_service.dart';
 import 'features/auth/pending_verification_page.dart';
 import 'features/auth/splash_page.dart';
@@ -21,6 +22,8 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   if (kDebugMode) {
     print('Menerima notifikasi background: ${message.messageId}');
   }
+
+  await FcmService.handleBackgroundMessage(message);
 }
 
 void main() async {

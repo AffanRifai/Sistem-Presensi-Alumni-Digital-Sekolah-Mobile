@@ -19,19 +19,14 @@ class AttendanceRecapService {
       },
     );
 
-    final data = response['data'];
-    if (data is! Map<String, dynamic>) {
-      return const [];
-    }
-
-    final students = data['students'];
-    if (students is! List) {
-      return const [];
-    }
+    final students = _extractStudents(response['data']);
 
     return students
-        .whereType<Map<String, dynamic>>()
-        .map(DailyAttendanceRow.fromJson)
+        .whereType<Map>()
+        .map(
+          (item) =>
+              DailyAttendanceRow.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
   }
 
@@ -49,20 +44,31 @@ class AttendanceRecapService {
       },
     );
 
-    final data = response['data'];
-    if (data is! Map<String, dynamic>) {
-      return const [];
-    }
-
-    final students = data['students'];
-    if (students is! List) {
-      return const [];
-    }
+    final students = _extractStudents(response['data']);
 
     return students
-        .whereType<Map<String, dynamic>>()
-        .map(MonthlyAttendanceRow.fromJson)
+        .whereType<Map>()
+        .map(
+          (item) =>
+              MonthlyAttendanceRow.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
+  }
+
+  List<dynamic> _extractStudents(dynamic payload) {
+    if (payload is List) return payload;
+    if (payload is! Map) return const [];
+
+    final map = Map<String, dynamic>.from(payload);
+    if (map['students'] is List) return map['students'] as List;
+
+    final nestedData = map['data'];
+    if (nestedData is List) return nestedData;
+    if (nestedData is Map && nestedData['students'] is List) {
+      return nestedData['students'] as List;
+    }
+
+    return const [];
   }
 
   String _formatDate(DateTime date) {
