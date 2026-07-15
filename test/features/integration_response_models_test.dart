@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sistem_presensi_digital_sekolah/features/alumni/data/alumni_service.dart';
 import 'package:sistem_presensi_digital_sekolah/features/kelas/data/class_recap_models.dart';
 import 'package:sistem_presensi_digital_sekolah/features/rekap_kehadiran/data/attendance_recap_models.dart';
 
@@ -40,6 +41,51 @@ void main() {
       expect(model.izin, 1);
       expect(model.sakit, 1);
       expect(model.alpha, 0);
+    });
+  });
+
+  group('Kelengkapan profil alumni', () {
+    test('profil default registrasi belum dianggap lengkap', () {
+      final profile = AlumniProfile.fromJson({
+        'name': 'Alumni Baru',
+        'email': 'alumni@example.com',
+        'verification_status': 'verified',
+        'profile': {'current_status': 'unemployed'},
+      });
+
+      expect(profile.isComplete, isFalse);
+    });
+
+    test('profil dengan lokasi dan kontak dianggap lengkap', () {
+      final profile = AlumniProfile.fromJson({
+        'name': 'Alumni Lengkap',
+        'email': 'lengkap@example.com',
+        'verification_status': 'verified',
+        'profile': {
+          'current_status': 'working',
+          'company_name': 'SIMPAD Teknologi',
+          'job_position': 'Developer',
+          'city': 'Bandung',
+          'province': 'Jawa Barat',
+          'whatsapp': '081234567890',
+        },
+      });
+
+      expect(profile.isComplete, isTrue);
+    });
+
+    test('penanda server menjadi sumber utama kelengkapan profil', () {
+      final profile = AlumniProfile.fromJson({
+        'name': 'Alumni Lama',
+        'email': 'lama@example.com',
+        'verification_status': 'verified',
+        'profile': {
+          'current_status': 'unemployed',
+          'profile_completed_at': '2026-07-16T00:00:00Z',
+        },
+      });
+
+      expect(profile.isComplete, isTrue);
     });
   });
 }

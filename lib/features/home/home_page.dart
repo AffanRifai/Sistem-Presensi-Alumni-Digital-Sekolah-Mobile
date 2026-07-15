@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/errors/error_mapper.dart';
 import '../../core/network/fcm_service.dart';
 import '../alumni/alumni_event_page.dart';
+import '../alumni/alumni_profile_edit_page.dart';
 import '../alumni/alumni_profile_page.dart';
+import '../alumni/data/alumni_service.dart';
 import '../alumni/job_vacancy_page.dart';
 import '../auth/data/auth_service.dart';
 import '../jadwal_mengajar/data/schedule_reminder_service.dart';
@@ -40,6 +42,7 @@ class _HomePageState extends State<HomePage> {
   late Future<AuthUser?> _userFuture;
   int _selectedIndex = 0;
   int _refreshVersion = 0;
+  bool _profileCompletionCheckStarted = false;
 
   @override
   void initState() {
@@ -52,6 +55,52 @@ class _HomePageState extends State<HomePage> {
 
     // Aktifkan pengingat jadwal mengajar (khusus role teacher)
     _initScheduleReminder();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureAlumniProfileCompleted();
+    });
+  }
+
+  Future<void> _ensureAlumniProfileCompleted() async {
+    if (_profileCompletionCheckStarted) return;
+    _profileCompletionCheckStarted = true;
+
+    try {
+      final user = await _userFuture;
+      if (user?.role != 'alumni' || user?.verificationStatus != 'verified') {
+        return;
+      }
+
+      final profile = await AlumniService().fetchProfile();
+      if (profile.isComplete || !mounted) return;
+
+      final completed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        useSafeArea: false,
+        builder: (dialogContext) => Dialog.fullscreen(
+          child: AlumniProfileEditPage(
+            currentProfile: profile,
+            isMandatory: true,
+          ),
+        ),
+      );
+
+      if (completed == true && mounted) {
+        await _refreshHome();
+      }
+    } catch (error, stackTrace) {
+      ErrorMapper.getMessage(error, stackTrace: stackTrace);
+      _profileCompletionCheckStarted = false;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Data profil alumni belum dapat diperiksa.'),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _initScheduleReminder() async {
@@ -88,6 +137,14 @@ class _HomePageState extends State<HomePage> {
       _refreshVersion++;
       _userFuture = Future<AuthUser?>.value(refreshedUser);
     });
+
+    if (refreshedUser?.role == 'alumni' &&
+        refreshedUser?.verificationStatus == 'verified' &&
+        !_profileCompletionCheckStarted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _ensureAlumniProfileCompleted();
+      });
+    }
   }
 
   void _handleBottomNavTap(
@@ -1368,9 +1425,7 @@ class _ParentQuickAccessCard extends StatelessWidget {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ParentHomePage(),
-                ),
+                MaterialPageRoute(builder: (context) => const ParentHomePage()),
               );
             },
             borderRadius: BorderRadius.circular(10),
