@@ -42,6 +42,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
 
   // Scroll & sticky header
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _viewportKey = GlobalKey();
   // GlobalKey pada SETIAP header hari di dalam ListView
   final Map<String, GlobalKey> _dayKeys = {};
   bool _didAutoScroll = false;
@@ -130,19 +131,55 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
   // ── Sticky header: update ValueNotifier tanpa setState (no full rebuild) ─
   void _onScroll() {
     String? topDay;
-    // Iterasi terbalik supaya dapat hari paling bawah yang sudah lewat garis sticky
-    for (final entry in _dayKeys.entries.toList().reversed) {
-      final ctx = entry.value.currentContext;
-      if (ctx == null) continue;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null) continue;
-      // Posisi Y header relatif ke layar (bukan ke scroll)
-      final dy = box.localToGlobal(Offset.zero).dy;
-      if (dy <= _stickyH) {
-        topDay = entry.key;
-        break;
+    final RenderBox? scrollableBox = _viewportKey.currentContext?.findRenderObject() as RenderBox?;
+    if (scrollableBox == null) return;
+
+    // Posisi Y teratas dari viewport scrollable relatif terhadap layar
+    final double viewportTop = scrollableBox.localToGlobal(Offset.zero).dy;
+    final double viewportBottom = viewportTop + scrollableBox.size.height;
+
+    // Cek apakah scroll sudah mencapai posisi paling bawah (hanya jika konten bisa di-scroll)
+    bool isAtBottom = false;
+    if (_scrollController.hasClients) {
+      final pos = _scrollController.position;
+      isAtBottom = pos.maxScrollExtent > 0 && pos.pixels >= pos.maxScrollExtent - 20;
+    }
+
+    if (isAtBottom) {
+      // Jika mentok di bawah, cari hari yang posisi header-nya paling dekat dengan batas atas viewport (viewportTop)
+      double minDistance = double.infinity;
+      String? closestDay;
+      for (final entry in _dayKeys.entries) {
+        final ctx = entry.value.currentContext;
+        if (ctx == null) continue;
+        final box = ctx.findRenderObject() as RenderBox?;
+        if (box == null) continue;
+        final dy = box.localToGlobal(Offset.zero).dy;
+        final distance = (dy - viewportTop).abs();
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestDay = entry.key;
+        }
+      }
+      topDay = closestDay;
+    }
+
+    // Jika belum ketemu, gunakan logika standar dengan threshold _stickyH
+    if (topDay == null) {
+      for (final entry in _dayKeys.entries.toList().reversed) {
+        final ctx = entry.value.currentContext;
+        if (ctx == null) continue;
+        final box = ctx.findRenderObject() as RenderBox?;
+        if (box == null) continue;
+        // Posisi Y header relatif ke layar (bukan ke scroll)
+        final dy = box.localToGlobal(Offset.zero).dy;
+        if (dy <= viewportTop + _stickyH) {
+          topDay = entry.key;
+          break;
+        }
       }
     }
+
     if (_stickyDay.value != topDay) {
       _stickyDay.value = topDay;
     }
@@ -156,6 +193,7 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
         if (ctx == null) return;
         Scrollable.ensureVisible(
           ctx,
+          alignment: 0.0,
           duration: const Duration(milliseconds: 450),
           curve: Curves.easeInOut,
         );
@@ -403,28 +441,29 @@ class _JadwalMengajarPageState extends State<JadwalMengajarPage> {
           onRefresh: _refresh,
           color: _blue,
           backgroundColor: Colors.white,
-          child: ListView.builder(
+          child: SingleChildScrollView(
+            key: _viewportKey,
             controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
               top: _stickyH + 8, // beri ruang di bawah sticky header overlay
               bottom: 32,
             ),
-            itemCount: data.keys.length,
-            itemBuilder: (context, index) {
-              final day = data.keys.elementAt(index);
-              final schedules = data[day]!;
-              final dayKey = _dayKeys.putIfAbsent(day, () => GlobalKey());
+            child: Column(
+              children: data.keys.map((day) {
+                final schedules = data[day]!;
+                final dayKey = _dayKeys.putIfAbsent(day, () => GlobalKey());
 
-              return _DaySection(
-                dayKey: dayKey,
-                label: _label(day),
-                schedules: schedules,
-                active: active,
-                afterActive: afterAct,
-                dayId: day,
-              );
-            },
+                return _DaySection(
+                  dayKey: dayKey,
+                  label: _label(day),
+                  schedules: schedules,
+                  active: active,
+                  afterActive: afterAct,
+                  dayId: day,
+                );
+              }).toList(),
+            ),
           ),
         ),
 

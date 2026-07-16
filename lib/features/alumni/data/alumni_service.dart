@@ -91,6 +91,7 @@ class AlumniProfile {
       nisn: getField('nisn')?.toString(),
       phone: getUserField('phone') ?? getField('whatsapp')?.toString(),
       schoolName:
+          json['school']?['name']?.toString() ??
           json['alumni']?['school']?['name']?.toString() ??
           getField('school_name')?.toString() ??
           getField('schoolName')?.toString(),
