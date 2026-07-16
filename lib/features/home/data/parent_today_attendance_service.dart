@@ -27,6 +27,7 @@ class ParentChildAttendance {
   final DateTime date;
   final String status;
   final String statusLabel;
+  final String? checkInTime;
 
   const ParentChildAttendance({
     required this.name,
@@ -36,6 +37,7 @@ class ParentChildAttendance {
     required this.date,
     required this.status,
     required this.statusLabel,
+    this.checkInTime,
   });
 
   factory ParentChildAttendance.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,7 @@ class ParentChildAttendance {
       status: attendanceMap['status']?.toString() ?? 'not_recorded',
       statusLabel:
           attendanceMap['status_label']?.toString() ?? 'Belum Tercatat',
+      checkInTime: attendanceMap['check_in_time']?.toString(),
     );
   }
 }

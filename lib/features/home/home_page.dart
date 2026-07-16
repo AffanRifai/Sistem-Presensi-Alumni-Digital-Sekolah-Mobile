@@ -1541,14 +1541,18 @@ class _MenuSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Layanan Sekolah',
+                'Menu Utama',
                 style: TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF1F2937),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
+              const Text(
+                'Daftar fitur utama untuk kegiatan belajar mengajar ',
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+              ),
               if (items.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 28),

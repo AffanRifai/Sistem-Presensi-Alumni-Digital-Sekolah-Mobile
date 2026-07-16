@@ -424,7 +424,7 @@ class _DatePickerCard extends StatelessWidget {
             ),
             const Icon(
               Icons.edit_calendar_rounded,
-              color: Color.fromARGB(255, 255, 161, 20),
+              color: Color(0xFF6B7280),
             ),
           ],
         ),
