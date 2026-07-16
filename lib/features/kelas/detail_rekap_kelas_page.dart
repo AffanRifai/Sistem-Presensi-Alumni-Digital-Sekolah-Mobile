@@ -23,6 +23,9 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
   bool _isLoading = true;
   String? _errorMessage;
   String _statusFilter = 'Semua';
+  int _currentPage = 0;
+
+  static const int _rowsPerPage = 15;
 
   ClassRecapModel get classData => widget.classData;
 
@@ -30,11 +33,12 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
   void initState() {
     super.initState();
     _loadStudents();
-    _searchController.addListener(() => setState(() {}));
+    _searchController.addListener(_handleSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_handleSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -51,6 +55,7 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
 
       setState(() {
         _students = students;
+        _currentPage = 0;
         _isLoading = false;
       });
     } on ApiException catch (error, stackTrace) {
@@ -102,9 +107,43 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
     return sorted;
   }
 
+  void _handleSearchChanged() {
+    setState(() => _currentPage = 0);
+  }
+
+  void _setStatusFilter(String filter) {
+    if (_statusFilter == filter) return;
+    setState(() {
+      _statusFilter = filter;
+      _currentPage = 0;
+    });
+  }
+
+  List<StudentRecapModel> _paginate(List<StudentRecapModel> students) {
+    final start = _currentPage * _rowsPerPage;
+    if (start >= students.length) return const [];
+
+    final requestedEnd = start + _rowsPerPage;
+    final end = requestedEnd > students.length ? students.length : requestedEnd;
+    return students.sublist(start, end);
+  }
+
+  int _totalPages(int totalRows) {
+    if (totalRows == 0) return 0;
+    return (totalRows + _rowsPerPage - 1) ~/ _rowsPerPage;
+  }
+
+  void _changePage(int page, int totalPages) {
+    if (page < 0 || page >= totalPages || page == _currentPage) return;
+    setState(() => _currentPage = page);
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleStudents = _visibleStudents;
+    final paginatedStudents = _paginate(visibleStudents);
+    final totalPages = _totalPages(visibleStudents.length);
+    final startIndex = _currentPage * _rowsPerPage;
     final showFilters =
         !_isLoading && _errorMessage == null && _students.isNotEmpty;
 
@@ -139,22 +178,19 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
                           RecapFilterPill(
                             label: 'Semua',
                             selected: _statusFilter == 'Semua',
-                            onTap: () =>
-                                setState(() => _statusFilter = 'Semua'),
+                            onTap: () => _setStatusFilter('Semua'),
                           ),
                           const SizedBox(width: 8),
                           RecapFilterPill(
                             label: 'Aktif',
                             selected: _statusFilter == 'Aktif',
-                            onTap: () =>
-                                setState(() => _statusFilter = 'Aktif'),
+                            onTap: () => _setStatusFilter('Aktif'),
                           ),
                           const SizedBox(width: 8),
                           RecapFilterPill(
                             label: 'Nonaktif',
                             selected: _statusFilter == 'Nonaktif',
-                            onTap: () =>
-                                setState(() => _statusFilter = 'Nonaktif'),
+                            onTap: () => _setStatusFilter('Nonaktif'),
                           ),
                         ],
                       ),
@@ -163,10 +199,26 @@ class _ClassRecapDetailPageState extends State<ClassRecapDetailPage> {
                     _StudentContent(
                       isLoading: _isLoading,
                       errorMessage: _errorMessage,
-                      students: visibleStudents,
+                      students: paginatedStudents,
+                      startIndex: startIndex,
                       hasAnyStudents: _students.isNotEmpty,
                       onRetry: _loadStudents,
                     ),
+                    if (!_isLoading &&
+                        _errorMessage == null &&
+                        visibleStudents.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _PaginationBar(
+                        currentPage: _currentPage,
+                        totalPages: totalPages,
+                        totalRows: visibleStudents.length,
+                        rowsPerPage: _rowsPerPage,
+                        onPageChanged: (page) {
+                          _changePage(page, totalPages);
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                    ],
                   ],
                 ),
               ),
@@ -335,6 +387,7 @@ class _StudentContent extends StatelessWidget {
   final bool isLoading;
   final String? errorMessage;
   final List<StudentRecapModel> students;
+  final int startIndex;
   final bool hasAnyStudents;
   final VoidCallback onRetry;
 
@@ -342,6 +395,7 @@ class _StudentContent extends StatelessWidget {
     required this.isLoading,
     required this.errorMessage,
     required this.students,
+    required this.startIndex,
     required this.hasAnyStudents,
     required this.onRetry,
   });
@@ -371,14 +425,15 @@ class _StudentContent extends StatelessWidget {
       );
     }
 
-    return _StudentTable(students: students);
+    return _StudentTable(students: students, startIndex: startIndex);
   }
 }
 
 class _StudentTable extends StatelessWidget {
   final List<StudentRecapModel> students;
+  final int startIndex;
 
-  const _StudentTable({required this.students});
+  const _StudentTable({required this.students, required this.startIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -394,11 +449,11 @@ class _StudentTable extends StatelessWidget {
         child: DataTable(
           headingRowColor: WidgetStateProperty.all(KelasPalette.surface),
           headingTextStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w800,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
             color: KelasPalette.ink,
           ),
-          dataTextStyle: const TextStyle(fontSize: 12, color: KelasPalette.ink),
+          dataTextStyle: const TextStyle(fontSize: 14.5, color: KelasPalette.ink),
           dividerThickness: 0.5,
           columnSpacing: 18,
           horizontalMargin: 14,
@@ -417,7 +472,7 @@ class _StudentTable extends StatelessWidget {
             final student = students[index];
             return DataRow(
               cells: [
-                DataCell(Text('${index + 1}')),
+                DataCell(Text('${startIndex + index + 1}')),
                 DataCell(_SizedText(student.fullName, width: 150)),
                 DataCell(Text(student.nis)),
                 DataCell(Text(student.nisn)),
@@ -429,6 +484,159 @@ class _StudentTable extends StatelessWidget {
               ],
             );
           }),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final int totalRows;
+  final int rowsPerPage;
+  final ValueChanged<int> onPageChanged;
+
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalRows,
+    required this.rowsPerPage,
+    required this.onPageChanged,
+  });
+
+  List<int?> _visiblePages() {
+    if (totalPages <= 5) {
+      return List<int>.generate(totalPages, (index) => index);
+    }
+
+    int start;
+    int end;
+
+    if (currentPage <= 2) {
+      start = 1;
+      end = 3;
+    } else if (currentPage >= totalPages - 3) {
+      start = totalPages - 4;
+      end = totalPages - 2;
+    } else {
+      start = currentPage - 1;
+      end = currentPage + 1;
+    }
+
+    return [
+      0,
+      if (start > 1) null,
+      ...List<int>.generate(end - start + 1, (index) => start + index),
+      if (end < totalPages - 1) null,
+      totalPages - 1,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final firstRow = currentPage * rowsPerPage + 1;
+    final requestedLastRow = firstRow + rowsPerPage - 1;
+    final lastRow = requestedLastRow > totalRows ? totalRows : requestedLastRow;
+
+    return Column(
+      children: [
+        Text(
+          'Menampilkan $firstRow–$lastRow dari $totalRows siswa',
+          style: const TextStyle(fontSize: 13.5, color: KelasPalette.slate),
+        ),
+        if (totalPages > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _PaginationArrow(
+                icon: Icons.chevron_left,
+                enabled: currentPage > 0,
+                onPressed: () => onPageChanged(currentPage - 1),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _visiblePages().map((page) {
+                    if (page == null) {
+                      return const SizedBox(
+                        width: 24,
+                        height: 34,
+                        child: Center(child: Text('…')),
+                      );
+                    }
+
+                    final isSelected = page == currentPage;
+                    return SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: OutlinedButton(
+                        onPressed: () => onPageChanged(page),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          backgroundColor: isSelected
+                              ? KelasPalette.primary
+                              : Colors.white,
+                          foregroundColor: isSelected
+                              ? Colors.white
+                              : KelasPalette.ink,
+                          side: BorderSide(
+                            color: isSelected
+                                ? KelasPalette.primary
+                                : KelasPalette.border,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('${page + 1}'),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _PaginationArrow(
+                icon: Icons.chevron_right,
+                enabled: currentPage < totalPages - 1,
+                onPressed: () => onPageChanged(currentPage + 1),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PaginationArrow extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _PaginationArrow({
+    required this.icon,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: IconButton.outlined(
+        onPressed: enabled ? onPressed : null,
+        padding: EdgeInsets.zero,
+        iconSize: 20,
+        icon: Icon(icon),
+        style: IconButton.styleFrom(
+          side: const BorderSide(color: KelasPalette.border),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

@@ -35,6 +35,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
   DateTime _selectedDate = DateTime.now();
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   String _monthlySearchQuery = '';
+  int _currentPage = 0;
   bool _isLoading = true;
   String? _errorMessage;
   List<DailyAttendanceRow> _dailyRows = const [];
@@ -47,6 +48,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
     'Sakit',
     'Alpha',
   ];
+  static const int _rowsPerPage = 15;
 
   @override
   void initState() {
@@ -75,6 +77,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
         if (!mounted) return;
         setState(() {
           _dailyRows = rows;
+          _currentPage = 0;
           _isLoading = false;
         });
       } else {
@@ -86,6 +89,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
         if (!mounted) return;
         setState(() {
           _monthlyRows = rows;
+          _currentPage = 0;
           _isLoading = false;
         });
       }
@@ -177,30 +181,157 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
   }
 
   Future<void> _pickMonth() async {
-    final picked = await showDatePicker(
+    final picked = await showDialog<DateTime>(
       context: context,
-      initialDate: _selectedMonth,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2050),
-      helpText: 'Pilih bulan',
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: primaryBlue),
-          ),
-          child: child!,
+      builder: (BuildContext context) {
+        int tempYear = _selectedMonth.year;
+        int tempMonth = _selectedMonth.month;
+
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'Mei',
+          'Jun',
+          'Jul',
+          'Agu',
+          'Sep',
+          'Okt',
+          'Nov',
+          'Des',
+        ];
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Pilih Bulan',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              content: SizedBox(
+                width: 300,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () {
+                            setDialogState(() => tempYear--);
+                          },
+                        ),
+                        Text(
+                          tempYear.toString(),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () {
+                            setDialogState(() => tempYear++);
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 1.5,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                      itemCount: months.length,
+                      itemBuilder: (context, index) {
+                        final isSelected = tempMonth == index + 1;
+
+                        return InkWell(
+                          onTap: () {
+                            setDialogState(() => tempMonth = index + 1);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? primaryBlue
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected
+                                    ? primaryBlue
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Text(
+                              months[index],
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(color: Colors.black54),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, DateTime(tempYear, tempMonth));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryBlue,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Pilih'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
     if (picked == null) return;
-    setState(() => _selectedMonth = DateTime(picked.year, picked.month));
+    setState(() {
+      _selectedMonth = DateTime(picked.year, picked.month);
+      _currentPage = 0;
+    });
     await _loadRecap();
   }
 
   void _setMode(RecapFilterMode mode) {
     if (_mode == mode) return;
-    setState(() => _mode = mode);
+    setState(() {
+      _mode = mode;
+      _currentPage = 0;
+    });
     _loadRecap();
   }
 
@@ -224,8 +355,37 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
     }).toList();
   }
 
+  List<T> _paginate<T>(List<T> rows) {
+    final start = _currentPage * _rowsPerPage;
+    if (start >= rows.length) return const [];
+
+    final requestedEnd = start + _rowsPerPage;
+    final end = requestedEnd > rows.length ? rows.length : requestedEnd;
+    return rows.sublist(start, end);
+  }
+
+  int _totalPages(int totalRows) {
+    if (totalRows == 0) return 0;
+    return (totalRows + _rowsPerPage - 1) ~/ _rowsPerPage;
+  }
+
+  void _changePage(int page, int totalPages) {
+    if (page < 0 || page >= totalPages || page == _currentPage) return;
+    setState(() => _currentPage = page);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final harianRows = _harianRows;
+    final bulananRows = _bulananRows;
+    final activeRowCount = _mode == RecapFilterMode.harian
+        ? harianRows.length
+        : bulananRows.length;
+    final totalPages = _totalPages(activeRowCount);
+    final paginatedHarianRows = _paginate(harianRows);
+    final paginatedBulananRows = _paginate(bulananRows);
+    final startIndex = _currentPage * _rowsPerPage;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
@@ -265,31 +425,61 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2F5FA),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _FilterTab(
-                            label: 'Harian',
-                            selected: _mode == RecapFilterMode.harian,
-                            onTap: () => _setMode(RecapFilterMode.harian),
-                          ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Harian'),
+                        selected: _mode == RecapFilterMode.harian,
+                        showCheckmark: false,
+                        onSelected: (_) {
+                          _setMode(RecapFilterMode.harian);
+                        },
+                        selectedColor: primaryBlue,
+                        backgroundColor: Colors.white,
+                        side: BorderSide(
+                          color: _mode == RecapFilterMode.harian
+                              ? primaryBlue
+                              : borderColor,
                         ),
-                        Expanded(
-                          child: _FilterTab(
-                            label: 'Bulanan',
-                            selected: _mode == RecapFilterMode.bulanan,
-                            onTap: () => _setMode(RecapFilterMode.bulanan),
-                          ),
+                        labelStyle: TextStyle(
+                          color: _mode == RecapFilterMode.harian
+                              ? Colors.white
+                              : Colors.black87,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                      ChoiceChip(
+                        label: const Text('Bulanan'),
+                        selected: _mode == RecapFilterMode.bulanan,
+                        showCheckmark: false,
+                        onSelected: (_) {
+                          _setMode(RecapFilterMode.bulanan);
+                        },
+                        selectedColor: primaryBlue,
+                        backgroundColor: Colors.white,
+                        side: BorderSide(
+                          color: _mode == RecapFilterMode.bulanan
+                              ? primaryBlue
+                              : borderColor,
+                        ),
+                        labelStyle: TextStyle(
+                          color: _mode == RecapFilterMode.bulanan
+                              ? Colors.white
+                              : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   InkWell(
@@ -325,7 +515,7 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                           ),
                           const Icon(
                             Icons.calendar_month_outlined,
-                            color: primaryBlue,
+                            color: Color.fromARGB(255, 77, 79, 80),
                             size: 20,
                           ),
                         ],
@@ -338,7 +528,10 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                       controller: _monthlySearchController,
                       enabled: !_isLoading,
                       onChanged: (value) {
-                        setState(() => _monthlySearchQuery = value);
+                        setState(() {
+                          _monthlySearchQuery = value;
+                          _currentPage = 0;
+                        });
                       },
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
@@ -353,7 +546,10 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                                 icon: const Icon(Icons.close),
                                 onPressed: () {
                                   _monthlySearchController.clear();
-                                  setState(() => _monthlySearchQuery = '');
+                                  setState(() {
+                                    _monthlySearchQuery = '';
+                                    _currentPage = 0;
+                                  });
                                 },
                               ),
                         filled: true,
@@ -386,12 +582,28 @@ class _AttendanceRecapPageState extends State<AttendanceRecapPage> {
                     isLoading: _isLoading,
                     errorMessage: _errorMessage,
                     mode: _mode,
-                    harianRows: _harianRows,
-                    bulananRows: _bulananRows,
+                    harianRows: paginatedHarianRows,
+                    bulananRows: paginatedBulananRows,
+                    startIndex: startIndex,
                     statuses: _statuses,
                     statusColor: _statusColor,
                     onRetry: _loadRecap,
                   ),
+                  if (!_isLoading &&
+                      _errorMessage == null &&
+                      activeRowCount > 0) ...[
+                    const SizedBox(height: 16),
+                    _PaginationBar(
+                      currentPage: _currentPage,
+                      totalPages: totalPages,
+                      totalRows: activeRowCount,
+                      rowsPerPage: _rowsPerPage,
+                      onPageChanged: (page) {
+                        _changePage(page, totalPages);
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ],
               ),
             ),
@@ -408,6 +620,7 @@ class _RecapContent extends StatelessWidget {
   final RecapFilterMode mode;
   final List<Map<String, String>> harianRows;
   final List<Map<String, dynamic>> bulananRows;
+  final int startIndex;
   final List<String> statuses;
   final Color Function(String) statusColor;
   final VoidCallback onRetry;
@@ -418,6 +631,7 @@ class _RecapContent extends StatelessWidget {
     required this.mode,
     required this.harianRows,
     required this.bulananRows,
+    required this.startIndex,
     required this.statuses,
     required this.statusColor,
     required this.onRetry,
@@ -474,61 +688,30 @@ class _RecapContent extends StatelessWidget {
     }
 
     return mode == RecapFilterMode.harian
-        ? _HarianTable(rows: harianRows, statusColor: statusColor)
+        ? _HarianTable(
+            rows: harianRows,
+            startIndex: startIndex,
+            statusColor: statusColor,
+          )
         : _BulananTable(
             rows: bulananRows,
+            startIndex: startIndex,
             statuses: statuses,
             statusColor: statusColor,
           );
   }
 }
 
-class _FilterTab extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _FilterTab({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: selected
-              ? Border.all(color: _AttendanceRecapPageState.primaryBlue)
-              : null,
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: selected
-                ? _AttendanceRecapPageState.primaryBlue
-                : Colors.black54,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HarianTable extends StatelessWidget {
   final List<Map<String, String>> rows;
+  final int startIndex;
   final Color Function(String) statusColor;
 
-  const _HarianTable({required this.rows, required this.statusColor});
+  const _HarianTable({
+    required this.rows,
+    required this.startIndex,
+    required this.statusColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -554,9 +737,10 @@ class _HarianTable extends StatelessWidget {
                     SizedBox(
                       width: 28,
                       child: Text(
-                        '${index + 1}',
+                        '${startIndex + index + 1}',
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
                           color: Colors.black54,
                         ),
                       ),
@@ -568,8 +752,8 @@ class _HarianTable extends StatelessWidget {
                           Text(
                             row['name'] ?? '-',
                             style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
                               color: Colors.black87,
                             ),
                           ),
@@ -577,7 +761,7 @@ class _HarianTable extends StatelessWidget {
                           Text(
                             'NIS: ${row['nis'] ?? '-'}',
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 13.5,
                               color: Colors.black45,
                             ),
                           ),
@@ -607,15 +791,11 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
       child: Text(
         status,
         style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
+          fontSize: 14.5,
+          fontWeight: FontWeight.w600,
           color: color,
         ),
       ),
@@ -625,11 +805,13 @@ class _StatusBadge extends StatelessWidget {
 
 class _BulananTable extends StatelessWidget {
   final List<Map<String, dynamic>> rows;
+  final int startIndex;
   final List<String> statuses;
   final Color Function(String) statusColor;
 
   const _BulananTable({
     required this.rows,
+    required this.startIndex,
     required this.statuses,
     required this.statusColor,
   });
@@ -669,7 +851,7 @@ class _BulananTable extends StatelessWidget {
             final row = rows[index];
             return DataRow(
               cells: [
-                DataCell(Text('${index + 1}')),
+                DataCell(Text('${startIndex + index + 1}')),
                 DataCell(
                   SizedBox(
                     width: 140,
@@ -712,6 +894,159 @@ class _BulananTable extends StatelessWidget {
               ],
             );
           }),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  final int currentPage;
+  final int totalPages;
+  final int totalRows;
+  final int rowsPerPage;
+  final ValueChanged<int> onPageChanged;
+
+  const _PaginationBar({
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalRows,
+    required this.rowsPerPage,
+    required this.onPageChanged,
+  });
+
+  List<int?> _visiblePages() {
+    if (totalPages <= 5) {
+      return List<int>.generate(totalPages, (index) => index);
+    }
+
+    int start;
+    int end;
+
+    if (currentPage <= 2) {
+      start = 1;
+      end = 3;
+    } else if (currentPage >= totalPages - 3) {
+      start = totalPages - 4;
+      end = totalPages - 2;
+    } else {
+      start = currentPage - 1;
+      end = currentPage + 1;
+    }
+
+    return [
+      0,
+      if (start > 1) null,
+      ...List<int>.generate(end - start + 1, (index) => start + index),
+      if (end < totalPages - 1) null,
+      totalPages - 1,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final firstRow = currentPage * rowsPerPage + 1;
+    final requestedLastRow = firstRow + rowsPerPage - 1;
+    final lastRow = requestedLastRow > totalRows ? totalRows : requestedLastRow;
+
+    return Column(
+      children: [
+        Text(
+          'Menampilkan $firstRow–$lastRow dari $totalRows siswa',
+          style: const TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+        if (totalPages > 1) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _PaginationArrow(
+                icon: Icons.chevron_left,
+                enabled: currentPage > 0,
+                onPressed: () => onPageChanged(currentPage - 1),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _visiblePages().map((page) {
+                    if (page == null) {
+                      return const SizedBox(
+                        width: 24,
+                        height: 34,
+                        child: Center(child: Text('…')),
+                      );
+                    }
+
+                    final isSelected = page == currentPage;
+                    return SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: OutlinedButton(
+                        onPressed: () => onPageChanged(page),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          backgroundColor: isSelected
+                              ? _AttendanceRecapPageState.primaryBlue
+                              : Colors.white,
+                          foregroundColor: isSelected
+                              ? Colors.white
+                              : Colors.black87,
+                          side: BorderSide(
+                            color: isSelected
+                                ? _AttendanceRecapPageState.primaryBlue
+                                : _AttendanceRecapPageState.borderColor,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('${page + 1}'),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _PaginationArrow(
+                icon: Icons.chevron_right,
+                enabled: currentPage < totalPages - 1,
+                onPressed: () => onPageChanged(currentPage + 1),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PaginationArrow extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  const _PaginationArrow({
+    required this.icon,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: IconButton.outlined(
+        onPressed: enabled ? onPressed : null,
+        padding: EdgeInsets.zero,
+        iconSize: 20,
+        icon: Icon(icon),
+        style: IconButton.styleFrom(
+          side: const BorderSide(color: _AttendanceRecapPageState.borderColor),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );
