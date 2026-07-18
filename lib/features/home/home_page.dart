@@ -18,6 +18,10 @@ import '../notification/data/notification_controller.dart';
 import '../notification/notification_page.dart';
 import '../presensi/pilih_kelas_page.dart';
 import '../presensi/scan_qr_attendance_page.dart';
+import '../presensi_sholat/presensi_sholat_page.dart';
+import '../presensi_sholat/student_prayer_history_page.dart';
+import '../presensi_sholat/teacher_prayer_verification_page.dart';
+import '../presensi_sholat/teacher_prayer_history_page.dart';
 import '../rekap_kehadiran/attendance_recap_select_class_page.dart';
 import '../siswa/riwayat_kehadiran_page.dart';
 import 'data/education_news_service.dart';
@@ -457,6 +461,8 @@ class _HomeDashboardState extends State<_HomeDashboard> {
                         child: _StudentQuickAccessCard(),
                       ),
                       const SizedBox(height: 24),
+                      _MenuSection(userFuture: widget.userFuture),
+                      const SizedBox(height: 28),
                       const _EducationInformationSection(),
                     ],
                   );
@@ -1297,10 +1303,12 @@ class _ParentInfoCardEmpty extends StatelessWidget {
 }
 
 class _MenuItemData {
-  final String iconAsset;
+  final String? iconAsset;
+  final IconData? icon;
   final String label;
 
-  const _MenuItemData({required this.iconAsset, required this.label});
+  const _MenuItemData({this.iconAsset, this.icon, required this.label})
+    : assert(iconAsset != null || icon != null);
 }
 
 class _StudentQuickAccessCard extends StatefulWidget {
@@ -1523,6 +1531,8 @@ class _MenuSection extends StatelessWidget {
       iconAsset: 'assets/icons/home/kehadiran_siswa.svg',
       label: 'Kehadiran Siswa',
     ),
+    _MenuItemData(icon: Icons.mosque_rounded, label: 'Presensi Sholat'),
+    _MenuItemData(icon: Icons.history_rounded, label: 'Riwayat Sholat'),
   ];
 
   @override
@@ -1590,6 +1600,12 @@ class _MenuSection extends StatelessWidget {
   }
 
   bool _isMenuVisibleForRole(String label, String? role) {
+    if (label == 'Presensi Sholat') {
+      return role == 'student' || role == 'teacher';
+    }
+    if (label == 'Riwayat Sholat') {
+      return role == 'student' || role == 'teacher';
+    }
     if (role == 'student') {
       return false;
     }
@@ -1601,6 +1617,28 @@ class _MenuSection extends StatelessWidget {
 
   void _handleMenuTap(BuildContext context, _MenuItemData item) {
     final roleFuture = userFuture;
+
+    if (item.label == 'Presensi Sholat') {
+      roleFuture.then((user) {
+        if (!context.mounted) return;
+        final page = user?.role == 'teacher'
+            ? const TeacherPrayerVerificationPage()
+            : const PresensiSholatPage();
+        Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+      });
+      return;
+    }
+
+    if (item.label == 'Riwayat Sholat') {
+      roleFuture.then((user) {
+        if (!context.mounted) return;
+        final page = user?.role == 'teacher'
+            ? const TeacherPrayerHistoryPage()
+            : const StudentPrayerHistoryPage();
+        Navigator.push(context, MaterialPageRoute(builder: (context) => page));
+      });
+      return;
+    }
 
     if (item.label == 'Presensi QR') {
       roleFuture.then((user) {
@@ -1679,9 +1717,18 @@ class _EducationMenuIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!item.iconAsset.toLowerCase().endsWith('.svg')) {
+    if (item.icon != null) {
+      return SizedBox(
+        width: 46,
+        height: 42,
+        child: Icon(item.icon, size: 42, color: _HomePageState.primaryBlue),
+      );
+    }
+
+    final iconAsset = item.iconAsset!;
+    if (!iconAsset.toLowerCase().endsWith('.svg')) {
       return Image.asset(
-        item.iconAsset,
+        iconAsset,
         width: 46,
         height: 42,
         fit: BoxFit.contain,
@@ -1694,7 +1741,7 @@ class _EducationMenuIcon extends StatelessWidget {
     }
 
     return SvgPicture.asset(
-      item.iconAsset,
+      iconAsset,
       width: 46,
       height: 42,
       fit: BoxFit.contain,

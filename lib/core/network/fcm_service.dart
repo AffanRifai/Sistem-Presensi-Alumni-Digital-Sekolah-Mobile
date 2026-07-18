@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../features/notification/data/notification_controller.dart';
 import 'api_client.dart';
 
@@ -8,8 +9,11 @@ class FcmService {
   FcmService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   static bool _isInitialized = false;
+  static bool _localNotificationsInitialized = false;
   static const String _channelId = 'attendance_notifications_v3';
   static const String _channelName = 'Presensi Sekolah';
+  static const String _channelMigrationKey =
+      'fcm_attendance_channel_v3_sound_migrated_v2';
   static final Set<String> _processedMessageKeys = <String>{};
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
@@ -38,11 +42,13 @@ class FcmService {
   }
 
   /// Inisialisasi Firebase Messaging
-  Future<void> init() async {
+  Future<void> init({bool syncDeviceToken = true}) async {
     if (kIsWeb) return; // Web push ditangani terpisah
     if (_isInitialized) {
-      await registerDeviceToken();
-      await NotificationController.instance.refreshUnreadCount();
+      if (syncDeviceToken) {
+        await registerDeviceToken();
+        await NotificationController.instance.refreshUnreadCount();
+      }
       return;
     }
 
@@ -55,9 +61,9 @@ class FcmService {
         sound: true,
       );
       await messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
+        alert: false,
+        badge: false,
+        sound: false,
       );
       await _initializeLocalNotifications();
 
@@ -65,14 +71,10 @@ class FcmService {
         print('[FcmService] Izin notifikasi: ${settings.authorizationStatus}');
       }
 
-      // 2. Daftarkan token FCM ke server
-      await registerDeviceToken();
-      await NotificationController.instance.refreshUnreadCount();
       FirebaseMessaging.instance.onTokenRefresh.listen((token) {
         registerDeviceToken(tokenOverride: token);
       });
 
-      // 3. Tangani notifikasi saat aplikasi di foreground (aktif dibuka)
       FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         if (_isDuplicateMessage(message)) return;
 
@@ -111,6 +113,11 @@ class FcmService {
       }
 
       _isInitialized = true;
+
+      if (syncDeviceToken) {
+        await registerDeviceToken();
+        await NotificationController.instance.refreshUnreadCount();
+      }
     } catch (e) {
       if (kDebugMode) {
         print('[FcmService] Gagal inisialisasi FCM: $e');
@@ -121,10 +128,19 @@ class FcmService {
   static Future<void> _initializeLocalNotifications({
     bool requestPermission = true,
   }) async {
-    const androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+    if (_localNotificationsInitialized) return;
+
+    const androidSettings = AndroidInitializationSettings('ic_stat_simpad');
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      defaultPresentAlert: true,
+      defaultPresentBadge: true,
+      defaultPresentSound: true,
+      defaultPresentBanner: true,
+      defaultPresentList: true,
     );
-    const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
@@ -137,9 +153,9 @@ class FcmService {
       _channelName,
       description: 'Notifikasi presensi siswa dan informasi sekolah.',
       importance: Importance.high,
-
       sound: RawResourceAndroidNotificationSound('bell'),
       playSound: true,
+      enableVibration: true,
     );
 
     final androidPlugin = _localNotifications
@@ -147,7 +163,34 @@ class FcmService {
           AndroidFlutterLocalNotificationsPlugin
         >();
 
+    var shouldMarkChannelMigrated = false;
+    if (requestPermission && androidPlugin != null) {
+      try {
+        const storage = FlutterSecureStorage();
+        final channelMigrated = await storage.read(key: _channelMigrationKey);
+        if (channelMigrated != 'true') {
+          await androidPlugin.deleteNotificationChannel(channelId: _channelId);
+          shouldMarkChannelMigrated = true;
+        }
+      } catch (error) {
+        if (kDebugMode) {
+          print('[FcmService] Migrasi channel notifikasi gagal: $error');
+        }
+      }
+    }
+
     await androidPlugin?.createNotificationChannel(androidChannel);
+    if (shouldMarkChannelMigrated) {
+      try {
+        const storage = FlutterSecureStorage();
+        await storage.write(key: _channelMigrationKey, value: 'true');
+      } catch (error) {
+        if (kDebugMode) {
+          print('[FcmService] Gagal menyimpan status migrasi channel: $error');
+        }
+      }
+    }
+
     final permissionGranted = requestPermission
         ? await androidPlugin?.requestNotificationsPermission()
         : null;
@@ -159,6 +202,8 @@ class FcmService {
         'permission=$permissionGranted, enabled=$notificationsEnabled',
       );
     }
+
+    _localNotificationsInitialized = true;
   }
 
   /// Ambil token perangkat dan daftarkan ke Laravel backend
@@ -215,8 +260,16 @@ class FcmService {
       priority: Priority.high,
       sound: RawResourceAndroidNotificationSound('bell'),
       playSound: true,
+      enableVibration: true,
     );
-    const iosDetails = DarwinNotificationDetails(sound: 'bell.wav');
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      presentBanner: true,
+      presentList: true,
+      sound: 'bell.wav',
+    );
     const details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,

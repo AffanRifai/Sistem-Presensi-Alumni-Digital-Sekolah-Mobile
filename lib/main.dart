@@ -30,11 +30,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inisialisasi Firebase secara aman (tidak crash jika berkas google-services.json belum dimasukkan)
+  var firebaseReady = false;
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    firebaseReady = true;
   } catch (error, stackTrace) {
     ErrorMapper.getMessage(error, stackTrace: stackTrace);
+  }
+
+  if (firebaseReady) {
+    await FcmService().init(syncDeviceToken: false);
   }
 
   runApp(const MyApp());
